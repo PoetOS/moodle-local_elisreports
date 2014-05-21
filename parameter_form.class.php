@@ -200,7 +200,6 @@ if ((reportdiv = document.getElementById('php_report_block')) &&
     /**
      * Load in existing data as form defaults ...
      * Overloads /lib/formslib.php::moodleform::set_data() to convert certain fields to group fields
-     * Required to get UCCR auto-complete 'fullname' field to display correctly
      *
      * @param stdClass|array $values object or array of default values
      */
@@ -233,9 +232,6 @@ if ((reportdiv = document.getElementById('php_report_block')) &&
                                     }
                                 }
                             }
-                        }
-                        if (get_class($fieldfilter) == 'generalized_filter_autocomplete_eliswithcustomfields') {
-                            $values['grp['.$field.']'] = $val;
                         }
                     }
                 }

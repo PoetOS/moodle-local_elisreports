@@ -115,7 +115,8 @@ class individual_course_progress_report extends table_report {
         $userobj = null;
         $clusternames = array();
 
-        $cmuserfilter = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'filterautoc', $this->filter);
+        $reportshortname = $this->get_report_shortname();
+        $cmuserfilter = php_report_filtering_get_active_filter_values($reportshortname, 'filterautoc_id', $this->filter);
       /* *** Debug ***
         ob_start();
         var_dump($cmuserfilter);
@@ -196,7 +197,7 @@ class individual_course_progress_report extends table_report {
         $report_filters = php_report_filtering_get_user_preferences($this->get_report_shortname());
         if (!empty($report_filters) && is_array($report_filters)) {
             foreach ($report_filters as $filter => $val) {
-                if ($filter === 'php_report_'.$this->get_report_shortname().'/'.'filterautoc') {
+                if ($filter === 'php_report_'.$this->get_report_shortname().'/'.'filterautoc_id') {
                     $chosen_userid = $val;
                 }
             }
@@ -220,7 +221,7 @@ class individual_course_progress_report extends table_report {
         global $USER;
 
         $cm_user_id   = cm_get_crlmuserid($USER->id);
-        $filter_array = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'userid',$this->filter);
+        $filter_array = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'userid', $this->filter);
         $filter_user_id = (isset($filter_array[0]['value'])) ? $filter_array[0]['value'] : 0;
 
         if ($filter_user_id == $cm_user_id && $this->execution_mode == php_report::EXECUTION_MODE_INTERACTIVE && $true_if_user === true) {
@@ -621,9 +622,8 @@ class individual_course_progress_report extends table_report {
 
         $permissions_filter = 'TRUE';
         $cm_user_id = cm_get_crlmuserid($USER->id);
-        $filter_array = php_report_filtering_get_active_filter_values(
-                            $this->get_report_shortname(), 'filterautoc',
-                            $this->filter);
+        $reportshortname = $this->get_report_shortname();
+        $filter_array = php_report_filtering_get_active_filter_values($reportshortname, 'filterautoc_id', $this->filter);
         $filter_user_id = (isset($filter_array[0]['value']))
                           ? $filter_array[0]['value']
                           : -1; // ELIS-4699: so not == to invalid cm/pm userid

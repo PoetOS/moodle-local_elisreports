@@ -98,8 +98,9 @@ class individual_user_report extends table_report {
             return $header_array;
         }
 
-        $userid = php_report_filtering_get_active_filter_values($this->get_report_shortname(),
-                                                                'userid',$this->filter);
+        $reportshortname = $this->get_report_shortname();
+        $filtername = 'filterautocomplete_id';
+        $userid = php_report_filtering_get_active_filter_values($reportshortname, $filtername, $this->filter);
 
         if (!empty($userid[0]['value']) && is_numeric($userid[0]['value'])) {
             $user_obj = new user($userid[0]['value']);
@@ -145,13 +146,13 @@ class individual_user_report extends table_report {
      *
      * @return int the user id
      */
-    function get_chosen_userid() {
+    public function get_chosen_userid() {
         $chosen_userid = '';
 
         $report_filters = php_report_filtering_get_user_preferences($this->get_report_shortname());
         if (!empty($report_filters) && is_array($report_filters)) {
             foreach ($report_filters as $filter => $val) {
-                if ($filter === 'php_report_'.$this->get_report_shortname().'/'.'userid') {
+                if ($filter === 'php_report_'.$this->get_report_shortname().'/'.'filterautocomplete_id') {
                     $chosen_userid = $val;
                 }
             }
@@ -175,10 +176,12 @@ class individual_user_report extends table_report {
         global $USER;
 
         $cm_user_id   = cm_get_crlmuserid($USER->id);
-        $filter_array = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'userid',$this->filter);
-        $filter_user_id = (isset($filter_array[0]['value'])) ? $filter_array[0]['value'] : 0;
+        $reportshortname = $this->get_report_shortname();
+        $filtername = 'filterautocomplete_id';
+        $filterarray = php_report_filtering_get_active_filter_values($reportshortname, $filtername, $this->filter);
+        $filteruserid = (isset($filterarray[0]['value'])) ? $filterarray[0]['value'] : 0;
 
-        if ($filter_user_id == $cm_user_id && $this->execution_mode == php_report::EXECUTION_MODE_INTERACTIVE && $true_if_user === true) {
+        if ($filteruserid == $cm_user_id && $this->execution_mode == php_report::EXECUTION_MODE_INTERACTIVE && $true_if_user === true) {
             // always allow the user to see their own report but not necessarily schedule it
             $permissions_filter = 'TRUE';
         } else {
@@ -206,7 +209,7 @@ class individual_user_report extends table_report {
 
         $filters = array();
 
-        $autocomplete_opts = array(
+        $autocopts = array(
             'report' => $this->get_report_shortname(),
             'ui' => 'inline',
             'contextlevel' => CONTEXT_ELIS_USER,
@@ -227,27 +230,23 @@ class individual_user_report extends table_report {
             )
         );
 
-        $permissions_filter = $this->get_user_permissions_filter('id', false);
-        $autocomplete_opts['selection_enabled'] = (!isset($permissions_filter->select) || $permissions_filter->select != 'FALSE') ? true : false;
-        $autocomplete_opts['restriction_sql'] = $permissions_filter;
+        $permfilter = $this->get_user_permissions_filter('id', false);
+        $autocopts['selection_enabled'] = (!isset($permfilter->select) || $permfilter->select != 'FALSE') ? true : false;
+        $autocopts['restriction_sql'] = $permfilter;
 
         $last_user = $this->get_chosen_userid();
         $cm_user_id = empty($last_user) ? cm_get_crlmuserid($USER->id) : $last_user;
         if ($cm_user_id && ($cmuser = new user($cm_user_id))) {
             $cmuser->load();
-            $autocomplete_opts['defaults'] = array(
+            $autocopts['defaults'] = array(
                     'label' => $cmuser->moodle_fullname(),
                     'id' => $cm_user_id
                 );
         }
 
-        $filters[] = new generalized_filter_entry(
-                'userid', 'usr', 'id',
-                get_string('fld_fullname','local_eliscore'),
-                false,
-                'autocomplete_eliswithcustomfields',
-                $autocomplete_opts
-        );
+        $strfullname = get_string('fld_fullname', 'local_eliscore');
+        $autoctype = 'autocomplete_eliswithcustomfields';
+        $filters[] = new generalized_filter_entry('filterautocomplete', 'usr', 'id', $strfullname, false, $autoctype, $autocopts);
 
         return $filters;
     }
@@ -499,17 +498,20 @@ class individual_user_report extends table_report {
 
         $cm_user_id = cm_get_crlmuserid($USER->id);
 
-        $filter_array = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'userid', $this->filter);
+        $reportshortname = $this->get_report_shortname();
+        $filtername = 'filterautocomplete_id';
+        $filterarray = php_report_filtering_get_active_filter_values($reportshortname, $filtername, $this->filter);
+
         // ELIS-4699: so not == to invalid cm/pm userid
-        $filter_user_id = (isset($filter_array[0]['value'])) ? $filter_array[0]['value'] : -1;
+        $filteruserid = (isset($filterarray[0]['value'])) ? $filterarray[0]['value'] : -1;
 
         $params = array('p_completestatus' => STUSTATUS_PASSED);
         $permissions_filter = 'TRUE ';
 
         // ELIS-3993 -- Do not display any results if no user ID was supplied by the filter
-        if ($filter_user_id == -1) {
+        if ($filteruserid == -1) {
             $permissions_filter = ' FALSE';
-        } else if ($filter_user_id != $cm_user_id || $this->execution_mode != php_report::EXECUTION_MODE_INTERACTIVE) {
+        } else if ($filteruserid != $cm_user_id || $this->execution_mode != php_report::EXECUTION_MODE_INTERACTIVE) {
             // obtain all course contexts where this user can view reports
             $contexts = get_contexts_by_capability_for_user('user', $this->access_capability, $this->userid);
             $filter_obj = $contexts->get_filter('id', 'user');

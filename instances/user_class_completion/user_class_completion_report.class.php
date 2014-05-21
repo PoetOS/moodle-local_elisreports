@@ -1207,6 +1207,7 @@ class user_class_completion_report extends table_report {
                     {$status_sql}
                        AND {$permissions_filter3}";
         }
+
         //error_log("UCCR::get_report_sql(): filter_clause = {$filter_clause}, sql = {$sql}");
         return array($sql, $params);
     }
