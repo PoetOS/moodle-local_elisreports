@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2014 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  *
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  (C) 2008-2014 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
@@ -31,6 +31,9 @@ class sitewide_course_completion_report extends table_report {
     var $lang_file = 'rlreport_sitewide_course_completion';
     var $show_time_spent;
     var $show_total_grade;
+
+    /** @var int $lastcrssetid to keep track of last courseset id */
+    protected $lastcrssetid = 0;
 
     /**
      * Gets the report category.
@@ -77,6 +80,8 @@ class sitewide_course_completion_report extends table_report {
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculumstudent.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/course.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculumcourse.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/programcrsset.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/crssetcourse.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/classmoodlecourse.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/pmclass.class.php');
 
@@ -285,20 +290,85 @@ class sitewide_course_completion_report extends table_report {
      * @return  array List of objects containing grouping id, field names, display labels and sort order
      */
      function get_grouping_fields() {
-         return array(new table_report_grouping('curriculum_name','cur.name',
-                                                get_string('grouping_curriculum', $this->lang_file).': ',
-                                                'ASC',array(),'above','isnull ASC,cur.name ASC'
-                                               ),
-                      new table_report_grouping('course_name','crs.name',
-                                                get_string('grouping_course', $this->lang_file).': ',
-                                                'ASC'
-                                               ),
-                      new table_report_grouping('class_name','cls.idnumber',
-                                                get_string('grouping_class', $this->lang_file).': ',
-                                                'ASC'
-                                               )
-                     );
+         return array(
+                 new table_report_grouping('curriculum_name','cur.name', get_string('grouping_curriculum', $this->lang_file).': ',
+                         'ASC',array(),'above','isnull ASC,cur.name ASC'),
+                 new table_report_grouping('courseset_name', 'ccs.name', get_string('grouping_courseset', $this->lang_file), 'ASC'),
+                 new table_report_grouping('course_name','crs.name', get_string('grouping_course', $this->lang_file).': ', 'ASC'),
+                 new table_report_grouping('class_name','cls.idnumber', get_string('grouping_class', $this->lang_file).': ', 'ASC')
+         );
      }
+
+    /**
+     * Transforms a heading element displayed above the columns into a listing of such heading elements
+     *
+     * @param   string array           $grouping_current  Mapping of field names to current values in the grouping
+     * @param   table_report_grouping  $grouping          Object containing all info about the current level of grouping
+     *                                                    being handled
+     * @param   stdClass               $datum             The most recent record encountered
+     * @param   string    $export_format  The format being used to render the report
+     *
+     * @return  string array                              Set of text entries to display
+     */
+    function transform_grouping_header_label($grouping_current, $grouping, $datum, $export_format) {
+        $result = array();
+        if ($grouping->id == 'courseset_name') {
+            $coursesets = array();
+            if (!empty($datum->prgid) && !empty($datum->courseset_name)) {
+                $prg = new curriculum($datum->prgid);
+                if ($prg) {
+                    foreach ($prg->crssets as $prgcrsset) {
+                        $crssetcrses = crssetcourse::find(new AND_filter(array(new field_filter('crssetid', $prgcrsset->crssetid), new field_filter('courseid', $datum->courseid))));
+                        if ($crssetcrses && $crssetcrses->valid()) {
+                            foreach ($crssetcrses as $crssetcrs) {
+                                if (!isset($coursesets[$crssetcrs->crssetid]) && ($crsset = new courseset($crssetcrs->crssetid))) {
+                                    $crsset->load();
+                                    $coursesets[$crsset->id] = $crsset->name;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (!empty($coursesets)) {
+                $this->lastcrssetid = $datum->crssetid;
+                $datum->courseset_name = '';
+                foreach ($coursesets as $crssetname) {
+                    if (!empty($datum->courseset_name)) {
+                        $this->lastcrssetid = -1; // multiple coursesets
+                        $datum->courseset_name .= ', ';
+                    }
+                    $datum->courseset_name .= $crssetname;
+                }
+            } else {
+                $this->lastcrssetid = 0;
+                $datum->courseset_name = get_string('na', $this->lang_file);
+            }
+            $result[] = $this->add_grouping_header(get_string('grouping_courseset', $this->lang_file).': ', $datum->courseset_name, $export_format);
+        } else if ($grouping->id == 'course_name') {
+            if (!empty($datum->crssetid) && $this->lastcrssetid) {
+                if (!($crsset = new courseset($datum->crssetid)) || $crsset->count_courses(new field_filter('courseid', $datum->courseid)) <= 0) {
+                    $this->lastcrssetid = 0;
+                    $result[] = $this->add_grouping_header(get_string('grouping_courseset', $this->lang_file).': ', get_string('na', $this->lang_file), $export_format);
+                }
+            }
+            $result[] = $this->add_grouping_header($grouping->label, $grouping_current[$grouping->field], $export_format);
+        } else {
+            $result[] = $this->add_grouping_header($grouping->label, $grouping_current[$grouping->field], $export_format);
+        }
+        return $result;
+    }
+
+    /**
+     * Specifies the fields to group by in the report
+     * (needed so we can wedge filter conditions in after the main query)
+     *
+     * @return  string  Comma-separated list of columns to group by,
+     *                  or '' if no grouping should be used
+     */
+    function get_report_sql_groups() {
+        return 'clsenr.id';
+    }
 
     /**
      * Takes a record and transforms it into an appropriate format
@@ -412,27 +482,23 @@ class sitewide_course_completion_report extends table_report {
         if (stripos($columns, $firstname) === FALSE) {
             $columns .= ", {$firstname}";
         }
-        $sql = "SELECT {$columns}, cur.id IS NULL AS isnull,
-                       clsenr.grade AS elisgrade
-                FROM {". pmclass::TABLE ."} cls
-                JOIN {". course::TABLE ."} crs
-                    ON crs.id = cls.courseid
-                JOIN {". student::TABLE ."} clsenr
-                    ON clsenr.classid = cls.id
-                JOIN {". user::TABLE ."} usr
-                    ON usr.id = clsenr.userid
-           LEFT JOIN ({". curriculumstudent::TABLE ."} curass
-                      JOIN {". curriculum::TABLE ."} cur
+        $sql = "SELECT DISTINCT {$columns}, cur.id IS NULL AS isnull, clsenr.grade AS elisgrade, crs.id AS courseid, ccs.id AS crssetid, cur.id AS prgid
+                FROM {".pmclass::TABLE."} cls
+                JOIN {".course::TABLE."} crs ON crs.id = cls.courseid
+                JOIN {".student::TABLE."} clsenr ON clsenr.classid = cls.id
+                JOIN {".user::TABLE."} usr ON usr.id = clsenr.userid
+           LEFT JOIN ({".curriculumstudent::TABLE."} curass
+                      JOIN {".curriculum::TABLE."} cur
                           ON cur.id = curass.curriculumid
-                      JOIN {". curriculumcourse::TABLE ."} curcrs
-                          ON curcrs.curriculumid = cur.id)
-                    ON curass.userid = usr.id
-                    AND curcrs.courseid = crs.id
-           LEFT JOIN {". classmoodlecourse::TABLE ."} clsmdl
-                    ON clsmdl.classid = cls.id
-           LEFT JOIN {user} mdlusr
-                    ON mdlusr.idnumber = usr.idnumber
-               ";
+                      LEFT JOIN {".curriculumcourse::TABLE."} curcrs ON curcrs.curriculumid = cur.id
+                      LEFT JOIN {".programcrsset::TABLE."} pcs ON pcs.prgid = cur.id
+                      LEFT JOIN {".crssetcourse::TABLE."} csc ON csc.crssetid = pcs.crssetid
+                      LEFT JOIN {".courseset::TABLE."} ccs ON ccs.id = csc.crssetid
+                     ) ON curass.userid = usr.id
+                     AND (curcrs.courseid = crs.id OR csc.courseid = crs.id)
+           LEFT JOIN {".classmoodlecourse::TABLE."} clsmdl ON clsmdl.classid = cls.id
+           LEFT JOIN {user} mdlusr ON mdlusr.idnumber = usr.idnumber
+           ";
 
         // Optional query segment for total grade
         if ($this->show_total_grade) {
@@ -495,9 +561,11 @@ class sitewide_course_completion_report extends table_report {
      *                       last colour is repeated if there are more groups than colours)
      */
     function get_grouping_row_colours() {
-        return array(array(84, 141, 212),
-                     array(141, 179, 226),
-                     array(198, 217, 241));
+        return array(
+                array(84, 141, 212),
+                array(112, 160, 219),
+                array(141, 179, 226),
+                array(198, 217, 241));
     }
 
     /**

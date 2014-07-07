@@ -20,6 +20,7 @@ $string['filter_users_grade'] = 'Should the report show the user\'s total grade 
 $string['filter_users_time_spent'] = 'Should the report show the time users spent in the course?';
 $string['grouping_class'] = 'Class';
 $string['grouping_course'] = 'Course';
+$string['grouping_courseset'] = 'Course Set';
 $string['grouping_curriculum'] = 'Program';
 $string['hour'] = 'hour';
 $string['hours'] = 'hours';
