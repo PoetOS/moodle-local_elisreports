@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2014 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @copyright  (C) 2008-2014 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
@@ -107,6 +107,8 @@ class curricula_report extends table_report {
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculum.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/student.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculumstudent.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/programcrsset.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/crssetcourse.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/pmclass.class.php');
 
         //needed to include for filters
@@ -343,10 +345,12 @@ class curricula_report extends table_report {
                          ON curass.userid = crlmu.id
                        JOIN {'. curriculum::TABLE .'} cc
                          ON curass.curriculumid = cc.id
+                  LEFT JOIN {'.programcrsset::TABLE.'} pcs ON pcs.prgid = cc.id
+                  LEFT JOIN {'.crssetcourse::TABLE.'} csc ON csc.crssetid = pcs.crssetid
                   LEFT JOIN {'. curriculumcourse::TABLE .'} ccc
                          ON ccc.curriculumid = cc.id
                   LEFT JOIN {'. pmclass::TABLE .'} ccl
-                         ON ccl.courseid = ccc.courseid
+                         ON (ccl.courseid = ccc.courseid OR ccl.courseid = csc.courseid)
                   LEFT JOIN {'. student::TABLE .'} cce
                          ON (cce.classid = ccl.id) AND (cce.userid = curass.userid)
                        JOIN {user} u
