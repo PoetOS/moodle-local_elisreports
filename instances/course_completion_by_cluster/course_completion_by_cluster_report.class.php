@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2014 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  *
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  (C) 2008-2014 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
@@ -100,6 +100,8 @@ class course_completion_by_cluster_report extends table_report {
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/userset.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculum.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculumcourse.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/crssetcourse.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/programcrsset.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculumstudent.class.php');
 
         //needed for options filters
@@ -162,10 +164,14 @@ class course_completion_by_cluster_report extends table_report {
         $status_label = get_string('column_option_status', 'rlreport_course_completion_by_cluster');
         $completion_label = get_string('column_option_completion', 'rlreport_course_completion_by_cluster');
         $heading_label = get_string('columns_options_heading', 'rlreport_course_completion_by_cluster');
+        $coursesetlabel = get_string('column_option_courseset', 'rlreport_course_completion_by_cluster');
 
-        $choices = array('curriculum' => $curriculum_label,
-                         'status'     => $status_label,
-                         'completion' => $completion_label);
+        $choices = array(
+            'curriculum' => $curriculum_label,
+            'status'     => $status_label,
+            'completion' => $completion_label,
+            'courseset'  => $coursesetlabel
+        );
 
         $checked = array('curriculum', 'status', 'completion');
 
@@ -252,7 +258,6 @@ class course_completion_by_cluster_report extends table_report {
             $show_completion = $preferences['0']['value'];
         }
 
-
         //user idnumber
         $idnumber_heading = get_string('column_idnumber', 'rlreport_course_completion_by_cluster');
         $idnumber_column = new table_report_column('user.idnumber AS useridnumber', $idnumber_heading, 'idnumber');
@@ -265,6 +270,22 @@ class course_completion_by_cluster_report extends table_report {
         $firstname_heading = get_string('column_firstname', 'rlreport_course_completion_by_cluster');
         $firstname_column = new table_report_column('user.firstname AS userfirstname', $firstname_heading, 'user_name', 'left', false, true, true, array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL));
 
+        $result = array($idnumber_column, $name_column, $lastname_column, $firstname_column);
+
+        // determine whether to show the courseset column
+        $preferences = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'columns_courseset', $this->filter);
+
+        $showcourseset = false;
+        if (isset($preferences['0']['value'])) {
+            $showcourseset = $preferences['0']['value'];
+        }
+        // CourseSet name
+        if ($showcourseset) {
+            $coursesetheading = get_string('column_courseset', 'rlreport_course_completion_by_cluster');
+            $coursesetcolumn = new table_report_column('ccs.name AS coursesetname', $coursesetheading, 'courseset');
+            $result = array_merge($result, array($coursesetcolumn));
+        }
+
         //CM course name
         $course_heading = get_string('column_course', 'rlreport_course_completion_by_cluster');
         $course_column = new table_report_column('course.name AS course_name', $course_heading, 'course');
@@ -273,12 +294,11 @@ class course_completion_by_cluster_report extends table_report {
         $required_heading = get_string('column_required', 'rlreport_course_completion_by_cluster');
         $required_column = new table_report_column('curriculum_course.required', $required_heading, 'required');
 
-        //
         $class_heading = get_string('column_class', 'rlreport_course_completion_by_cluster');
         $class_column = new table_report_column('class.idnumber AS classidnumber', $class_heading, 'class');
 
-        //array of all columns
-        $result = array($idnumber_column, $name_column, $lastname_column, $firstname_column, $course_column, $required_column, $class_column);
+        // array of all columns
+        $result = array_merge($result, array($course_column, $required_column, $class_column));
 
         //add the enrolment status column if applicable, based on the filter
         if ($show_status) {
@@ -311,7 +331,7 @@ class course_completion_by_cluster_report extends table_report {
         $param_prefix = 'ccbcr_';
 
         //special version of the select columns used in the non-curriculum case
-        $noncurriculum_columns = str_replace('curriculum.id', 'NULL', $columns);
+        $noncurriculum_columns = str_replace(array('curriculum.id', 'ccs.name'), array('NULL', 'NULL'), $columns);
 
         //extra column needed for the curriculum-specific records
         $extra_curriculum_columns = 'COUNT(course_completion.id) AS numtotal,
@@ -403,50 +423,47 @@ class course_completion_by_cluster_report extends table_report {
         }
         //the master query
         $sql = "SELECT * FROM (
-                  SELECT DISTINCT {$columns},
-                         {$extra_curriculum_columns}
-                  FROM ". sprintf($core_tables_fmt, 1) .'
-                  JOIN {'. curriculumstudent::TABLE .'} curriculum_assignment
-                    ON user.id = curriculum_assignment.userid
-                  JOIN {'. curriculum::TABLE .'} curriculum
-                    ON curriculum_assignment.curriculumid = curriculum.id
-                  JOIN {'. curriculumcourse::TABLE .'} curriculum_course
-                    ON curriculum.id = curriculum_course.curriculumid
-                  JOIN {'. course::TABLE .'} course
-                    ON curriculum_course.courseid = course.id
-                   LEFT JOIN ({'. pmclass::TABLE .'} class
-                              JOIN {'. student::TABLE ."} enrol
-                              ON class.id = enrol.classid)
-                     ON curriculum_assignment.userid = enrol.userid
-                     AND course.id = class.courseid
-                  {$completion_tables}
-                  {$curriculum_filter[0]}
-                  {$inactive}
-                  {$group_by}
+                    SELECT DISTINCT {$columns}, {$extra_curriculum_columns}
+                      FROM ".sprintf($core_tables_fmt, 1).'
+                      JOIN {'.curriculumstudent::TABLE.'} curriculum_assignment ON user.id = curriculum_assignment.userid
+                      JOIN {'.curriculum::TABLE.'} curriculum ON curriculum_assignment.curriculumid = curriculum.id
+                 LEFT JOIN {'.curriculumcourse::TABLE.'} curriculum_course ON curriculum.id = curriculum_course.curriculumid
+                 LEFT JOIN {'.programcrsset::TABLE.'} pcs ON pcs.prgid = curriculum.id
+                 LEFT JOIN {'.crssetcourse::TABLE.'} csc ON csc.crssetid = pcs.crssetid
+                 LEFT JOIN {'.courseset::TABLE.'} ccs ON csc.crssetid = ccs.id
+                      JOIN {'.course::TABLE.'} course ON (curriculum_course.courseid = course.id OR csc.courseid = course.id)
+                 LEFT JOIN ({'.pmclass::TABLE.'} class
+                            JOIN {'.student::TABLE."} enrol ON class.id = enrol.classid)
+                        ON curriculum_assignment.userid = enrol.userid
+                           AND course.id = class.courseid
+                 {$completion_tables}
+                 {$curriculum_filter[0]}
+                 {$inactive}
+                 {$group_by}
 
-                  UNION
+                     UNION
 
-                  SELECT DISTINCT {$noncurriculum_columns},
-                         {$extra_noncurriculum_columns}
-                  FROM ". sprintf($core_tables_fmt, 2) .'
-                  JOIN {'. student::TABLE .'} enrol
-                    ON user.id = enrol.userid
-                  JOIN {'. pmclass::TABLE .'} class
-                    ON enrol.classid = class.id
-                  JOIN {'. course::TABLE .'} course
-                    ON class.courseid = course.id
-                  LEFT JOIN ({'. curriculumcourse::TABLE .'} curriculum_course
-                             JOIN {'. curriculumstudent::TABLE ."} curriculum_assignment
-                               ON curriculum_course.curriculumid = curriculum_assignment.curriculumid)
-                    ON course.id = curriculum_course.courseid
-                    AND enrol.userid = curriculum_assignment.userid
-                    {$completion_tables}
-
-                    WHERE curriculum_assignment.id IS NULL
-                    {$noncurriculum_filter[0]}
-                    {$inactive}
-                    {$noncurriculum_group_by}
-                ) main_data
+                    SELECT DISTINCT {$noncurriculum_columns},
+                           {$extra_noncurriculum_columns}
+                      FROM ".sprintf($core_tables_fmt, 2).'
+                      JOIN {'.student::TABLE.'} enrol ON user.id = enrol.userid
+                      JOIN {'.pmclass::TABLE.'} class ON enrol.classid = class.id
+                      JOIN {'.course::TABLE.'} course ON class.courseid = course.id
+                 LEFT JOIN ({'.curriculumcourse::TABLE.'} curriculum_course
+                            JOIN {'.curriculumstudent::TABLE.'} curriculum_assignment ON curriculum_course.curriculumid = curriculum_assignment.curriculumid)
+                        ON course.id = curriculum_course.courseid
+                           AND enrol.userid = curriculum_assignment.userid
+                 LEFT JOIN ({'.crssetcourse::TABLE.'} crssetcrs
+                            JOIN {'.programcrsset::TABLE.'} prgcrsset ON crssetcrs.crssetid = prgcrsset.crssetid
+                            JOIN {'.curriculumstudent::TABLE."} curriculum_assignment2 ON prgcrsset.prgid = curriculum_assignment2.curriculumid)
+                        ON course.id = crssetcrs.courseid
+                           AND enrol.userid = curriculum_assignment2.userid
+                 {$completion_tables}
+                     WHERE curriculum_assignment.id IS NULL AND curriculum_assignment2.id IS NULL
+                 {$noncurriculum_filter[0]}
+                 {$inactive}
+                 {$noncurriculum_group_by}
+              ) main_data
               {$permissions_filter}";
 
         $params = array_merge($params, $curriculum_filter[1], $noncurriculum_filter[1], $filter_params);
@@ -480,12 +497,15 @@ class course_completion_by_cluster_report extends table_report {
         if ($record->curriculumid === NULL) {
             //not part of a curriculum
             $record->required = get_string('na', 'rlreport_course_completion_by_cluster');
-        } else if ($record->required == 1) {
+        } else if (!empty($record->required)) {
             $record->required = get_string('required_yes', 'rlreport_course_completion_by_cluster');
         } else {
             $record->required = get_string('required_no', 'rlreport_course_completion_by_cluster');
         }
 
+        if (empty($record->coursesetname)) {
+            $record->coursesetname = get_string('na', 'rlreport_course_completion_by_cluster');
+        }
 
         //make sure we want to display this column
         if (property_exists($record, 'completestatusid')) {
