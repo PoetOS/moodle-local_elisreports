@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2014 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  *
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  (C) 2008-2014 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
@@ -79,6 +79,8 @@ class individual_user_report extends table_report {
         require_once($CFG->dirroot.'/local/elisprogram/lib/data/curriculumstudent.class.php');
         require_once($CFG->dirroot.'/local/elisprogram/lib/data/course.class.php');
         require_once($CFG->dirroot.'/local/elisprogram/lib/data/curriculumcourse.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/programcrsset.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/crssetcourse.class.php');
         require_once($CFG->dirroot.'/local/elisprogram/lib/data/pmclass.class.php');
 
         //needed to include for filters
@@ -296,7 +298,7 @@ class individual_user_report extends table_report {
      *                  or '' if no grouping should be used
      */
     function get_report_sql_groups() {
-        return "";
+        return 'crscomp.id, crs.id';
     }
 
     /**
@@ -305,16 +307,13 @@ class individual_user_report extends table_report {
      * @return  array List of objects containing grouping id, field names, display labels and sort order
      */
      function get_grouping_fields() {
-         return array(new table_report_grouping('curriculum_name','cur.name',
-                                                get_string('grouping_curriculum', $this->lang_file).': ',
-                                                'ASC',array(),'above','isnull ASC,cur.name ASC'),
-                      new table_report_grouping('course_idnumber','crs.idnumber',
-                                                get_string('grouping_course', $this->lang_file).': ',
-                                                'ASC'),
-                      new table_report_grouping('class_idnumber','cls.idnumber',
-                                                get_string('grouping_class', $this->lang_file).': ',
-                                                'ASC')
-                     );
+         return array(
+                 new table_report_grouping('curriculum_name', 'cur.name', get_string('grouping_curriculum', $this->lang_file).': ', 'ASC',
+                         array(), 'above', 'isnull ASC, cur.name ASC'),
+                 new table_report_grouping('courseset_name', 'ccs.name', get_string('grouping_courseset', $this->lang_file).': ', 'ASC'),
+                 new table_report_grouping('course_idnumber', 'crs.idnumber', get_string('grouping_course', $this->lang_file).': ', 'ASC'),
+                 new table_report_grouping('class_idnumber', 'cls.idnumber', get_string('grouping_class', $this->lang_file).': ', 'ASC')
+         );
      }
 
     /**
@@ -330,7 +329,7 @@ class individual_user_report extends table_report {
      */
      function transform_grouping_header_label($grouping_current, $grouping, $datum, $export_format) {
 
-         if ($grouping->id == 'course_idnumber') {
+         if ($grouping->id == 'course_idnumber' || $grouping->id == 'courseset_name') {
              $result = array();
          } else if ($grouping->id == 'class_idnumber') {
              $date_completed = (empty($datum->date_completed))
@@ -351,6 +350,34 @@ class individual_user_report extends table_report {
                       ? get_string('not_available',$this->lang_file)
                       : $this->userdate($datum->expires, get_string('strftimedaydate'));
              $result = array();
+             if (!empty($datum->courseset_name)) {
+                 $coursesets = array();
+                 // Must check for multiple coursesets for program course
+                 $prg = new curriculum($datum->prgid);
+                 foreach ($prg->crssets as $prgcrsset) {
+                     $crssetcrses = crssetcourse::find(new AND_filter(array(new field_filter('crssetid', $prgcrsset->crssetid), new field_filter('courseid', $datum->courseid))));
+                     if ($crssetcrses && $crssetcrses->valid()) {
+                         foreach ($crssetcrses as $crssetcrs) {
+                             if (!isset($coursesets[$crssetcrs->crssetid]) && ($crsset = new courseset($crssetcrs->crssetid))) {
+                                 $crsset->load();
+                                 $coursesets[$crsset->id] = $crsset->name;
+                             }
+                         }
+                     }
+                 }
+                 if (!empty($coursesets)) {
+                     $datum->courseset_name = '';
+                     foreach ($coursesets as $crssetname) {
+                         if (!empty($datum->courseset_name)) {
+                             $datum->courseset_name .= ', ';
+                         }
+                         $datum->courseset_name .= $crssetname;
+                     }
+                 } else {
+                     $datum->courseset_name = get_string('na', $this->lang_file);
+                 }
+                 $result[] = $this->add_grouping_header(get_string('grouping_courseset', $this->lang_file).': ', $datum->courseset_name, $export_format);
+             }
              $result[] = $this->add_grouping_header(
                                  get_string('grouping_course', $this->lang_file) . ': ',
                                  $datum->course_idnumber, $export_format);
@@ -404,8 +431,8 @@ class individual_user_report extends table_report {
         $next_curr = (!empty($nextrecord->curriculum_name)) ? $nextrecord->curriculum_name : '';
 
         if ($last_curr != $next_curr) {
-            $acqcnt = (!empty($lastrecord->acqcnt)) ? $lastrecord->acqcnt : 0;
-            $reqcnt = (!empty($lastrecord->reqcnt)) ? $lastrecord->reqcnt : 0;
+            $acqcnt = !empty($lastrecord->acqcnt) ? $lastrecord->acqcnt : 0;
+            $reqcnt = !empty($lastrecord->reqcnt) ? $lastrecord->reqcnt : 0;
 
             $lastrecord->element = get_string('footer_has_earned',
                                               $this->lang_file,
@@ -469,18 +496,20 @@ class individual_user_report extends table_report {
         }
 
         // Figure out the number of completed credits for the curriculum
-        $numcomplete_subquery = "SELECT sum(innerclsenr.credits)
-                                 FROM {". student::TABLE ."} innerclsenr
-                                 JOIN {". pmclass::TABLE ."} innercls ON innercls.id = innerclsenr.classid
-                                 JOIN {". course::TABLE ."} innercrs ON innercls.courseid = innercrs.id
-                                 JOIN {". curriculumcourse::TABLE ."} innercurcrs
-                                     ON innercurcrs.courseid = innercrs.id
-                                 WHERE innerclsenr.userid = usr.id
-                                     AND innercurcrs.curriculumid = cur.id
-                                     AND innerclsenr.completestatusid = :p_completestatus";
+        $numcomplete_subquery = 'SELECT SUM(DISTINCT innerclsenr.credits)
+                                   FROM {'.student::TABLE.'} innerclsenr
+                                   JOIN {'.pmclass::TABLE.'} innercls ON innercls.id = innerclsenr.classid
+                                   JOIN {'.course::TABLE.'} innercrs ON innercls.courseid = innercrs.id
+                              LEFT JOIN {'.curriculumcourse::TABLE.'} innercurcrs ON innercurcrs.courseid = innercrs.id
+                              LEFT JOIN ({'.programcrsset::TABLE.'} innerpcs
+                                         JOIN {'.crssetcourse::TABLE.'} innercsc ON innerpcs.crssetid = innercsc.crssetid)
+                                     ON innercrs.id = innercsc.courseid
+                                  WHERE innerclsenr.userid = usr.id
+                                        AND (innercurcrs.curriculumid = cur.id OR innerpcs.prgid = cur.id)
+                                        AND innerclsenr.completestatusid = :p_completestatus';
 
         // Main query
-        $sql = "SELECT {$columns},
+        $sql = "SELECT DISTINCT {$columns},
                     cur.id IS NULL AS isnull,
                     crs.name AS course_name,
                     clsenr.credits AS credits,
@@ -491,6 +520,8 @@ class individual_user_report extends table_report {
                     usr.firstname AS firstname,
                     usr.lastname AS lastname,
                     cur.reqcredits AS reqcnt,
+                    cur.id AS prgid,
+                    crs.id AS courseid,
                     ({$numcomplete_subquery}) AS acqcnt
                 FROM {". course::TABLE ."} crs
                 JOIN {". pmclass::TABLE ."} cls
@@ -499,13 +530,14 @@ class individual_user_report extends table_report {
                     ON clsenr.classid=cls.id
                 JOIN {". user::TABLE ."} usr
                     ON usr.id = clsenr.userid
-           LEFT JOIN ({". curriculumstudent::TABLE ."} curass
-                      JOIN {". curriculum::TABLE ."} cur
-                          ON cur.id = curass.curriculumid
-                      JOIN {". curriculumcourse::TABLE ."} curcrs
-                          ON curcrs.curriculumid = cur.id)
-                    ON curass.userid = usr.id
-                    AND curcrs.courseid = crs.id
+           LEFT JOIN ({".curriculumstudent::TABLE."} curass
+                           JOIN {".curriculum::TABLE."} cur ON cur.id = curass.curriculumid
+                      LEFT JOIN {".curriculumcourse::TABLE."} curcrs ON curcrs.curriculumid = cur.id
+                      LEFT JOIN {".programcrsset::TABLE."} pcs ON pcs.prgid = cur.id
+                      LEFT JOIN {".crssetcourse::TABLE."} csc ON csc.crssetid = pcs.crssetid
+                      LEFT JOIN {".courseset::TABLE."} ccs ON ccs.id = pcs.crssetid
+                     ) ON curass.userid = usr.id
+                     AND (curcrs.courseid = crs.id OR csc.courseid = crs.id)
            LEFT JOIN {". coursecompletion::TABLE ."} crscomp
                     ON crscomp.courseid = crs.id
            LEFT JOIN {". GRDTABLE ."} grd

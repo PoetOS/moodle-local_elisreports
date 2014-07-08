@@ -38,6 +38,7 @@ $string['filter_user_header'] = '';
 $string['filter_user_footer'] = '';
 $string['grouping_curriculum'] = 'Program';
 $string['grouping_course'] = 'Course ID';
+$string['grouping_courseset'] = 'Course Set';
 $string['grouping_class'] = 'Class ID';
 $string['header_user_id'] = 'User ID';
 $string['header_firstname'] = 'First name';
