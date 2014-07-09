@@ -13,6 +13,7 @@ $string['filter_user_match'] = 'User Match filter';
 $string['filtered_by'] = 'Filtered by: ';
 $string['grouping_classid'] = 'Class Instance ID: ';
 $string['grouping_coursename'] = 'Course Description Name: ';
+$string['grouping_coursesetname'] = 'Course Set Name: ';
 $string['grouping_curriculum'] = 'Program: ';
 $string['idnumber'] = 'ID Number';
 $string['na'] = 'N/A';

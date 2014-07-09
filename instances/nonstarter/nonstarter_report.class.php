@@ -124,6 +124,8 @@ class nonstarter_report extends table_report {
         require_once($CFG->dirroot.'/local/elisprogram/lib/data/classmoodlecourse.class.php');
         require_once($CFG->dirroot.'/local/elisprogram/lib/data/student.class.php');
         require_once($CFG->dirroot.'/local/elisprogram/lib/data/curriculum.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/programcrsset.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/crssetcourse.class.php');
         require_once($CFG->dirroot.'/local/elisprogram/lib/data/curriculumcourse.class.php');
 
         //needed for options filters
@@ -396,11 +398,15 @@ class nonstarter_report extends table_report {
         if (stripos($columns, $firstname) === FALSE) {
             $columns .= ", {$firstname}";
         }
+        $columns .= ', crs.id AS courseid, ccs.id AS crssetid';
         // Also require Moodle-Only query w/o CM tables!
-        $sql = "SELECT {$columns}
+        $sql = "SELECT DISTINCT {$columns}
            FROM {".curriculum::TABLE.'} cur
-           JOIN {'.curriculumcourse::TABLE.'} curcrs ON curcrs.curriculumid = cur.id
-           JOIN {'.course::TABLE.'} crs ON crs.id = curcrs.courseid
+           LEFT JOIN {'.curriculumcourse::TABLE.'} curcrs ON curcrs.curriculumid = cur.id
+           LEFT JOIN {'.programcrsset::TABLE.'} pcs ON pcs.prgid = cur.id
+           LEFT JOIN {'.crssetcourse::TABLE.'} csc ON csc.crssetid = pcs.crssetid
+           LEFT JOIN {'.courseset::TABLE.'} ccs ON ccs.id = csc.crssetid
+           JOIN {'.course::TABLE.'} crs ON (crs.id = curcrs.courseid OR crs.id = csc.courseid)
            JOIN {'.pmclass::TABLE.'} cls ON cls.courseid = crs.id
           ';
       // ELIS-4009: remove dependency on class times!
@@ -502,14 +508,44 @@ class nonstarter_report extends table_report {
      */
      function get_grouping_fields() {
          return array(
-                    new table_report_grouping('curriculum_name','cur.name',
-                        get_string('grouping_curriculum', 'rlreport_nonstarter'), 'ASC', array(), 'above', 'cur.priority ASC, cur.name ASC'),
-                    new table_report_grouping('course_name','crs.name',
-                        get_string('grouping_coursename', 'rlreport_nonstarter'), 'ASC'),
-                    new table_report_grouping('class_name','cls.idnumber',
-                        get_string('grouping_classid', 'rlreport_nonstarter'), 'ASC')
-                );
+                 new table_report_grouping('curriculum_name', 'cur.name', get_string('grouping_curriculum', 'rlreport_nonstarter'), 'ASC',
+                         array(), 'above', 'cur.priority ASC, cur.name ASC'),
+                 new table_report_grouping('courseset_name', 'ccs.name', get_string('grouping_coursesetname', 'rlreport_nonstarter'), 'ASC'),
+                 new table_report_grouping('course_name', 'crs.name', get_string('grouping_coursename', 'rlreport_nonstarter'), 'ASC'),
+                 new table_report_grouping('class_name', 'cls.idnumber', get_string('grouping_classid', 'rlreport_nonstarter'), 'ASC')
+         );
      }
+
+    /**
+     * Transforms a heading element displayed above the columns into a listing of such heading elements
+     *
+     * @param   string array           $grouping_current  Mapping of field names to current values in the grouping
+     * @param   table_report_grouping  $grouping          Object containing all info about the current level of grouping
+     *                                                    being handled
+     * @param   stdClass               $datum             The most recent record encountered
+     * @param   string    $export_format  The format being used to render the report
+     *
+     * @return  string array                              Set of text entries to display
+     */
+    function transform_grouping_header_label($grouping_current, $grouping, $datum, $export_format) {
+        $result = array();
+        if ($grouping->id == 'course_name') {
+            $crsset = null;
+            if (!empty($datum->crssetid) && ($crsset = new courseset($datum->crssetid))) {
+                $crssetcrses = 0;
+                if ($crsset) {
+                   $crsset->load();
+                   $crssetcrses = $crsset->count_courses(new field_filter('courseid', $datum->courseid));
+                }
+                if (!$crssetcrses) {
+                    $result[] = $this->add_grouping_header(get_string('grouping_coursesetname', 'rlreport_nonstarter'),
+                            get_string('na', 'rlreport_nonstarter'), $export_format);
+                }
+            }
+        }
+        $result[] = $this->add_grouping_header($grouping->label, $grouping_current[$grouping->field], $export_format);
+        return $result;
+    }
 
     /**
      * Determines whether the current user can view this report,
@@ -564,9 +600,12 @@ class nonstarter_report extends table_report {
      *                       last colour is repeated if there are more groups than colours)
      */
     function get_grouping_row_colours() {
-        return array(array(217, 217, 217),
-                     array(141, 179, 226),
-                     array(198, 217, 241));
+        return array(
+                array(217, 217, 217),
+                array(84, 141, 212),
+                array(141, 179, 226),
+                array(198, 217, 241)
+        );
     }
 }
 
