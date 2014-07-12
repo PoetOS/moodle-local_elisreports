@@ -50,6 +50,9 @@ $string['na'] = 'N/A';
 $string['name'] = 'Name';
 $string['nofieldsfound'] = 'No custom fields were found.';
 
+$string['optional_column_courseset'] = 'Course Set';
+$string['optional_columns'] = 'Optional columns';
+
 $string['percent_symbol'] = '%';
 $string['pluginname'] = 'Course Progress Summary Report';
 $string['present'] = 'Present';

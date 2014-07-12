@@ -74,6 +74,8 @@ class course_progress_summary_report extends table_report {
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculumstudent.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/course.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculumcourse.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/programcrsset.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/crssetcourse.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/pmclass.class.php');
 
         //needed to get the filtering libraries
@@ -122,7 +124,7 @@ class course_progress_summary_report extends table_report {
                                     'rlreport_course_progress_summary');
 
         $filter_entries = array();
-        $filter_entries[] = new generalized_filter_entry('curr', 'curcrs', 'curriculumid', get_string('filter_program', 'rlreport_course_progress_summary'), false, 'selectany', $curricula_options);
+        $filter_entries[] = new generalized_filter_entry('curr', '', '', get_string('filter_program', 'rlreport_course_progress_summary'), false, 'selectany', $curricula_options);
 
         $filter_entries[] = new generalized_filter_entry('cluster', 'enrol', 'userid', get_string('filter_cluster', 'rlreport_course_progress_summary'), false, 'clusterselect', array('default' => null));
 
@@ -131,6 +133,12 @@ class course_progress_summary_report extends table_report {
         $filter_entries[] = new generalized_filter_entry('enrol', 'enrol', 'enrolmenttime', get_string('filter_course_date', 'rlreport_course_progress_summary'), false, 'date');
 
         $filter_entries[] = new generalized_filter_entry('enrol', 'enrol', 'enrolmenttime', get_string('filter_course_date', 'rlreport_course_progress_summary'), false, 'date');
+
+        $filter_entries[] = new generalized_filter_entry('columns', '', '', get_string('optional_columns', 'rlreport_course_progress_summary'), false, 'checkboxes', array(
+            'choices' => array('courseset' => get_string('optional_column_courseset', 'rlreport_course_progress_summary')),
+            'allowempty' => true,
+            'heading' => get_string('optional_columns', 'rlreport_course_progress_summary'),
+            'nofilter' => true));
 
         return $filter_entries;
     }
@@ -146,6 +154,23 @@ class course_progress_summary_report extends table_report {
         global $DB;
         //add custom fields here, first the Course name, then custom fields, then progress and % students passing
         $columns = array();
+
+        // determine whether to show the courseset column, only if program selected
+        $currfilter = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'curr', $this->filter);
+        // No filtering returns a value of '0'
+        if ($currfilter && $currfilter[0]['value'] != 'null') {
+            $preferences = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'columns_courseset', $this->filter);
+
+            $showcourseset = false;
+            if (isset($preferences['0']['value'])) {
+                $showcourseset = $preferences['0']['value'];
+            }
+            if ($showcourseset) {
+                $coursesetheading = get_string('optional_column_courseset', 'rlreport_course_progress_summary');
+                $columns[] = new table_report_column('ccs.name AS coursesetname', $coursesetheading, 'courseset');
+            }
+        }
+
         $columns[] = new table_report_column('crs.name', get_string('column_course', 'rlreport_course_progress_summary'), 'course', 'left', true);
 
         $filter_params = php_report_filtering_get_active_filter_values(
@@ -223,9 +248,8 @@ class course_progress_summary_report extends table_report {
                              'center', '$e');
 
         $columns[] = new table_report_column(
-                             'SUM(CASE WHEN enrol.completestatusid = 2 THEN 1 ELSE 0 END) AS studentspassing',
-                             get_string('column_percent_passing', 'rlreport_course_progress_summary'),
-                             'percent_passing', 'left');
+                'SUM(DISTINCT CASE WHEN enrol.completestatusid = 2 THEN 1 ELSE 0 END) AS studentspassing',
+                get_string('column_percent_passing', 'rlreport_course_progress_summary'), 'percent_passing', 'left');
 
         return $columns;
     }
@@ -256,7 +280,7 @@ class course_progress_summary_report extends table_report {
      *                  or '' if no grouping should be used
      */
     function get_report_sql_groups() {
-        return 'crs.id';
+        return 'crs.id, comp.id';
     }
 
     /**
@@ -289,23 +313,20 @@ class course_progress_summary_report extends table_report {
                                  $this->get_report_shortname(), 'curr',
                                  $this->filter);
         $curr_filter = '';
-
-        // TODO: add 'Courses not in a curriculum' to curricula drop-down
-        // And that will change the queries (WHERE NOT EXISTS) ... hmmmm...
-
         // No filtering returns a value of '0'
         if ($curr_filter_array) {
             if ($curr_filter_array[0]['value'] == '0') {
-                $curr_filter = " AND curcrs2.curriculumid IS NOT NULL";
+                $curr_filter = " AND (curcrs2.curriculumid IS NOT NULL OR pcs2.prgid IS NOT NULL)";
             } else if ($curr_filter_array[0]['value'] == 'null') {
-                $curr_filter = " AND curcrs2.curriculumid IS NULL";
+                $curr_filter = " AND (curcrs2.curriculumid IS NOT NULL OR pcs2.prgid IS NOT NULL)";
             } else {
-                $curr_filter = " AND curcrs2.curriculumid = ". $curr_filter_array[0]['value'];
+                $curr_filter = " AND (curcrs2.curriculumid = ".$curr_filter_array[0]['value']." OR pcs2.prgid = ".$curr_filter_array[0]['value'].")";
+                $where[] = '(curcrs.curriculumid = '.$curr_filter_array[0]['value'].' OR pcs.prgid = '.$curr_filter_array[0]['value'].')';
             }
         }
 
         //main query
-        $sql = "SELECT {$columns}, COUNT(enrol.id) AS numstudents, crs.id AS courseid
+        $sql = "SELECT DISTINCT {$columns}, COUNT(DISTINCT enrol.id) AS numstudents, crs.id AS courseid
                 FROM {". course::TABLE .'} crs
                 JOIN {'. pmclass::TABLE .'} cls
                   ON cls.courseid = crs.id
@@ -335,18 +356,29 @@ class course_progress_summary_report extends table_report {
         //                   JOIN {$CURMAN->db->prefix_table(CURTABLE)} curr
         //                      ON currcrs.curricululmid = curr.id
         if ($curr_filter != '') {
-            $sql .= ' LEFT JOIN {'. curriculumcourse::TABLE .'} curcrs
-                             ON curcrs.courseid = crs.id';
-            $where[] = 'EXISTS (SELECT * FROM {'. student::TABLE .'} enrol2
-                                JOIN {'. pmclass::TABLE .'} cls2
-                                  ON cls2.id = enrol2.classid
-                           LEFT JOIN {'. curriculumcourse::TABLE .'} curcrs2
-                                  ON curcrs2.courseid = cls2.courseid
-                           LEFT JOIN {'. curriculumstudent::TABLE ."} curass
-                                  ON curcrs2.curriculumid = curass.curriculumid
-                                 AND curass.userid = enrol2.userid
-                                WHERE enrol.id = enrol2.id
-                                {$curr_filter})";
+            $sql .= ' LEFT JOIN {'.curriculumcourse::TABLE.'} curcrs ON curcrs.courseid = crs.id
+                      LEFT JOIN {'.crssetcourse::TABLE.'} csc ON csc.courseid = crs.id
+                      LEFT JOIN {'.programcrsset::TABLE.'} pcs ON pcs.crssetid = csc.crssetid';
+            // determine whether we need the courseset table too
+            $preferences = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'columns_courseset', $this->filter);
+
+            $showcourseset = false;
+            if (isset($preferences['0']['value'])) {
+                $showcourseset = $preferences['0']['value'];
+            }
+            if ($showcourseset) {
+                $sql .= ' LEFT JOIN {'.courseset::TABLE.'} ccs ON ccs.id = pcs.crssetid';
+            }
+            $where[] = (($curr_filter_array[0]['value'] == 'null') ? 'NOT ' : '').
+                       'EXISTS (SELECT \'x\' FROM {'.student::TABLE.'} enrol2
+                                  JOIN {'.pmclass::TABLE.'} cls2 ON cls2.id = enrol2.classid
+                             LEFT JOIN {'.curriculumcourse::TABLE.'} curcrs2 ON curcrs2.courseid = cls2.courseid
+                             LEFT JOIN {'.crssetcourse::TABLE.'} csc2 ON csc2.courseid = cls2.courseid
+                             LEFT JOIN {'.programcrsset::TABLE.'} pcs2 ON pcs2.crssetid = csc2.crssetid
+                             LEFT JOIN {'.curriculumstudent::TABLE."} curass ON (curcrs2.curriculumid = curass.curriculumid OR pcs2.prgid = curass.curriculumid)
+                                       AND curass.userid = enrol2.userid
+                                 WHERE enrol.id = enrol2.id
+                             {$curr_filter})";
         }
         if (empty(elis::$config->local_elisprogram->legacy_show_inactive_users)) {
             $where[] = 'crlmu.inactive = 0';
@@ -372,6 +404,53 @@ class course_progress_summary_report extends table_report {
 
         $record->associatedcluster = empty($record->associatedcluster)
                                      ? get_string('no') : get_string('yes');
+
+        if (empty($record->coursesetname)) {
+            $record->coursesetname = get_string('na', 'rlreport_course_progress_summary');
+        } else {
+            // Must check for multiple courseset assignments
+            $coursesets = array();
+            $currfilter = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'curr', $this->filter);
+            if (isset($currfilter[0]['value']) && $currfilter[0]['value'] != 'null') {
+                if ($currfilter[0]['value'] > 0) {
+                    $prg = new curriculum($currfilter[0]['value']);
+                    if ($prg) {
+                        foreach ($prg->crssets as $prgcrsset) {
+                            $crssetcrses = crssetcourse::find(new AND_filter(array(new field_filter('crssetid', $prgcrsset->crssetid), new field_filter('courseid', $record->courseid))));
+                            if ($crssetcrses && $crssetcrses->valid()) {
+                                foreach ($crssetcrses as $crssetcrs) {
+                                    if (!isset($coursesets[$crssetcrs->crssetid]) && ($crsset = new courseset($crssetcrs->crssetid))) {
+                                        $crsset->load();
+                                        $coursesets[$crsset->id] = $crsset->name;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    $crssetcrses = crssetcourse::find(new field_filter('courseid', $record->courseid));
+                    if ($crssetcrses && $crssetcrses->valid()) {
+                        foreach ($crssetcrses as $crssetcrs) {
+                            if (($crsset = new courseset($crssetcrs->crssetid))) {
+                                $crsset->load();
+                                $coursesets[$crsset->id] = $crsset->name;
+                            }
+                        }
+                    }
+                }
+            }
+            if (!empty($coursesets)) {
+                $record->coursesetname = '';
+                foreach ($coursesets as $crssetname) {
+                    if (!empty($record->coursesetname)) {
+                        $record->coursesetname .= ', ';
+                    }
+                    $record->coursesetname .= $crssetname;
+                }
+            } else {
+                $record->coursesetname = get_string('na', 'rlreport_course_progress_summary');
+            }
+        }
 
         //make sure this is set to something so that the horizontal bar graph doesn't disappear
         if (empty($record->stucompletedprogress)) {
