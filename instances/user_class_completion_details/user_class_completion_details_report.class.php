@@ -172,7 +172,6 @@ class user_class_completion_details_report extends user_class_completion_report 
         require_once($CFG->dirroot .'/local/elisprogram/coursepage.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/curriculumpage.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/pmclasspage.class.php');
-        require_once($CFG->dirroot .'/local/elisprogram/coursecatalogpage.class.php'); // ENVTABLE
 
         parent::require_dependencies();
     }
@@ -361,9 +360,9 @@ class user_class_completion_details_report extends user_class_completion_report 
                     ON u.id = stu.userid
                   JOIN {'. pmclass::TABLE .'} cls
                     ON stu.classid = cls.id
-                  JOIN {'.course::TABLE.'} crs
+                  JOIN {'.course::TABLE."} crs
                     ON cls.courseid = crs.id
-             LEFT JOIN {'.ENVTABLE."} env
+             LEFT JOIN {local_elisprogram_env} env
                     ON crs.environmentid = env.id
                  {$curriculum_join}
                  {$student_curriculum_join}
@@ -400,7 +399,7 @@ class user_class_completion_details_report extends user_class_completion_report 
                     ON inst.classid = cls.id
                   JOIN {'.course::TABLE.'} crs
                     ON cls.courseid = crs.id
-             LEFT JOIN {'.ENVTABLE.'} env
+             LEFT JOIN {local_elisprogram_env} env
                     ON crs.environmentid = env.id
              LEFT JOIN {'.student::TABLE."} stu ON stu.userid = u.id
                  {$curriculum_join}
