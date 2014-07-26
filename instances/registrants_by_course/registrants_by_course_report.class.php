@@ -74,6 +74,9 @@ class registrants_by_course_report extends table_report {
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/course.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculum.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculumcourse.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/curriculumstudent.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/programcrsset.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/crssetcourse.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/pmclass.class.php');
 
         //needed to include for filters
@@ -235,18 +238,45 @@ class registrants_by_course_report extends table_report {
      *
      * @return  array List of objects containing grouping id, field names, display labels and sort order
      */
-     function get_grouping_fields() {
-         return array(new table_report_grouping('curriculum_name','cur.name',
-                                                get_string('grouping_curriculum', $this->lang_file).': ',
-                                                'ASC',array(),'above','isnull ASC,cur.name ASC'),
-                      new table_report_grouping('course_name','crs.name',
-                                                get_string('grouping_course', $this->lang_file).': ',
-                                                'ASC'),
-                      new table_report_grouping('class_name','cls.idnumber',
-                                                get_string('grouping_class', $this->lang_file).': ',
-                                                'ASC')
-                     );
-     }
+    function get_grouping_fields() {
+        return array(
+                new table_report_grouping('curriculum_name', 'cur.name', get_string('grouping_curriculum', $this->lang_file).': ', 'ASC',
+                        array(), 'above', 'isnull ASC, cur.name ASC'),
+                new table_report_grouping('courseset_name', 'ccs.name', get_string('grouping_courseset', $this->lang_file).': ', 'ASC'),
+                new table_report_grouping('course_name', 'crs.name', get_string('grouping_course', $this->lang_file).': ', 'ASC'),
+                new table_report_grouping('class_name', 'cls.idnumber', get_string('grouping_class', $this->lang_file).': ', 'ASC'));
+    }
+
+    /**
+     * Transforms a heading element displayed above the columns into a listing of such heading elements
+     *
+     * @param   string array           $grouping_current  Mapping of field names to current values in the grouping
+     * @param   table_report_grouping  $grouping          Object containing all info about the current level of grouping
+     *                                                    being handled
+     * @param   stdClass               $datum             The most recent record encountered
+     * @param   string    $export_format  The format being used to render the report
+     *
+     * @return  string array                              Set of text entries to display
+     */
+    function transform_grouping_header_label($grouping_current, $grouping, $datum, $export_format) {
+        $result = array();
+        if ($grouping->id == 'course_name') {
+            $crsset = null;
+            if (!empty($datum->crssetid) && ($crsset = new courseset($datum->crssetid))) {
+                $crssetcrses = 0;
+                if ($crsset) {
+                   $crsset->load();
+                   $crssetcrses = $crsset->count_courses(new field_filter('courseid', $datum->courseid));
+                }
+                if (!$crssetcrses) {
+                    $result[] = $this->add_grouping_header(get_string('grouping_courseset', $this->lang_file).': ',
+                            get_string('na', $this->lang_file), $export_format);
+                }
+            }
+        }
+        $result[] = $this->add_grouping_header($grouping->label, $grouping_current[$grouping->field], $export_format);
+        return $result;
+    }
 
     /**
      * Takes a record and transforms it into an appropriate format
@@ -269,6 +299,9 @@ class registrants_by_course_report extends table_report {
         $record->curriculum_name = ($record->curriculum_name == '')
                                    ? get_string('na', $this->lang_file)
                                    : $record->curriculum_name;
+        if (empty($record->courseset_name)) {
+            $record->courseset_name = get_string('na', $this->lang_file);
+        }
         $record->r_startdate = ($record->r_startdate == 0)
                                ? get_string('na', $this->lang_file)
                                : $this->userdate($record->r_startdate, get_string('strftimedaydate'));
@@ -306,21 +339,23 @@ class registrants_by_course_report extends table_report {
         if (stripos($columns, $firstname) === FALSE) {
             $columns .= ", {$firstname}";
         }
+        $columns .= ', crs.id AS courseid, ccs.id AS crssetid, cur.id IS NULL AS isnull';
         // Main query
-        $sql = "SELECT DISTINCT {$columns},
-                    cur.id IS NULL AS isnull
-                FROM {". course::TABLE ."} crs
-                JOIN {". pmclass::TABLE ."} cls
-                    ON cls.courseid = crs.id
-                JOIN {". student::TABLE ."} clsenr
-                    ON clsenr.classid = cls.id
-                JOIN {". user::TABLE ."} usr
-                    ON usr.id = clsenr.userid
-           LEFT JOIN {". curriculumcourse::TABLE ."} curcrs
-                    ON curcrs.courseid = crs.id
-           LEFT JOIN {". curriculum::TABLE ."} cur
-                    ON cur.id = curcrs.curriculumid
-                ";
+        $sql = "SELECT DISTINCT {$columns}
+                FROM {".course::TABLE.'} crs
+                JOIN {'.pmclass::TABLE.'} cls ON cls.courseid = crs.id
+                JOIN {'.student::TABLE.'} clsenr ON clsenr.classid = cls.id
+                JOIN {'.user::TABLE.'} usr ON usr.id = clsenr.userid
+           LEFT JOIN {'.curriculumstudent::TABLE.'} curstu ON curstu.userid = usr.id
+           LEFT JOIN {'.curriculumcourse::TABLE.'} curcrs ON curcrs.courseid = crs.id
+                     AND curcrs.curriculumid = curstu.curriculumid
+           LEFT JOIN {'.programcrsset::TABLE.'} pcs ON pcs.prgid = curstu.curriculumid
+           LEFT JOIN {'.crssetcourse::TABLE.'} csc ON csc.crssetid = pcs.crssetid
+                     AND csc.courseid = crs.id
+           LEFT JOIN {'.curriculum::TABLE.'} cur ON cur.id = curcrs.curriculumid
+                     OR cur.id = pcs.prgid
+           LEFT JOIN {'.courseset::TABLE.'} ccs ON ccs.id = pcs.crssetid
+               ';
 
         if (!empty($where)) {
             $sql .= 'WHERE '. implode(' AND ', $where);
@@ -373,8 +408,9 @@ class registrants_by_course_report extends table_report {
      */
     function get_grouping_row_colours() {
         return array(array(217, 217, 217),
-                     array(141, 179, 226),
-                     array(198, 217, 241));
+                array(84, 141, 212),
+                array(141, 179, 226),
+                array(198, 217, 241));
     }
 }
 

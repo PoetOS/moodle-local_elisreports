@@ -16,6 +16,7 @@ $string['filter_date_range'] = 'Select the date range for this report';
 
 $string['grouping_curriculum'] = 'Program';
 $string['grouping_course'] = 'Course Description';
+$string['grouping_courseset'] = 'Course Set';
 $string['grouping_class'] = 'Class Instance ID';
 
 $string['header_date_range'] = 'New Student Registrants By Course';
