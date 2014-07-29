@@ -42,6 +42,9 @@ class user_class_completion_details_report extends user_class_completion_report 
     //user-specific header (report headers)
     protected $_userfieldids = array();
 
+    /** @var bool $showcoursesetfields - whether we are showing any courseset data (default = false) */
+    protected $showcoursesetfields = false;
+
     public $languagefile = 'rlreport_user_class_completion_details';
     public $parent_langfile = 'rlreport_user_class_completion';
 
@@ -85,6 +88,19 @@ class user_class_completion_details_report extends user_class_completion_report 
         // Add curriculum custom fields
         $curriculum_custom_field_columns = $this->get_custom_field_columns($cols, 'curriculum');
         $result = array_merge($result, $curriculum_custom_field_columns);
+
+        // CourseSet name & custom fields
+        if ($cols['crsset_name']) {
+            $this->showcoursesetfields = true;
+            $coursesetnameheading = get_string('column_courseset', $this->languagefile);
+            $coursesetnamecolumn = new table_report_column('ccs.name AS coursesetname', $coursesetnameheading, 'coursesetname');
+            $result[] = $coursesetnamecolumn;
+        }
+        $coursesetcustomfieldcolumns = $this->get_custom_field_columns($cols, 'courseset');
+        if (!empty($coursesetcustomfieldcolumns)) {
+            $this->showcoursesetfields = true;
+            $result = array_merge($result, $coursesetcustomfieldcolumns);
+        }
 
         // Course name
         $coursename_heading = get_string('column_coursename', $this->languagefile);
@@ -167,6 +183,8 @@ class user_class_completion_details_report extends user_class_completion_report 
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculum.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculumcourse.class.php');
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculumstudent.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/programcrsset.class.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/crssetcourse.class.php');
 
         // ELIS pages required for links
         require_once($CFG->dirroot .'/local/elisprogram/coursepage.class.php');
@@ -218,6 +236,7 @@ class user_class_completion_details_report extends user_class_completion_report 
         }
 
         $curriculum_custom_field_join = '';
+        $coursesetcustomfieldjoin = '';
         $class_custom_field_join = '';
         //determine the join SQL for all types of relevant custom fields
         if (!empty($this->_customfieldids)) {
@@ -227,6 +246,12 @@ class user_class_completion_details_report extends user_class_completion_report 
             );
 
             $curriculum_custom_field_join = $this->get_custom_field_sql($this->_customfieldids, $instancefields);
+
+            // For the CourseSet portion, only care about couresset-level fields
+            $instancefields = array(
+                'courseset' => 'ccs.id AS crssetid',
+            );
+            $coursesetcustomfieldjoin = $this->get_custom_field_sql($this->_customfieldids, $instancefields);
 
             // For the class instance portion, we consider class instance and
             // course description custom fields
@@ -286,18 +311,22 @@ class user_class_completion_details_report extends user_class_completion_report 
         $curriculum_select  = '';
         $curriculum_join    = '';
 
-        if ($has_fields) {
+        if ($has_fields || $this->showcoursesetfields) {
             $curriculum_select = ' cur.id AS curid,';
-            $curriculum_join   = ' LEFT JOIN (
-                                      {'. curriculumcourse::TABLE .'} curcrs
-                                      JOIN {'. curriculum::TABLE ."} cur
-                                        ON curcrs.curriculumid = cur.id
-                                      {$curriculum_custom_field_join}
-                                      JOIN {". curriculumstudent::TABLE ."} curass
-                                        ON curass.curriculumid = cur.id)
-                                   ON crs.id = curcrs.courseid
-                                  AND curass.userid = u.id
-                                  {$class_custom_field_join} ";
+            $curriculum_join = '
+                    LEFT JOIN ({'.curriculumstudent::TABLE.'} curass
+                                    JOIN {'.curriculum::TABLE.'} cur ON curass.curriculumid = cur.id
+                               LEFT JOIN {'.curriculumcourse::TABLE."} curcrs ON curcrs.curriculumid = curass.curriculumid
+                               {$curriculum_custom_field_join}
+                               LEFT JOIN ({".programcrsset::TABLE.'} pcs
+                                          JOIN {'.crssetcourse::TABLE.'} csc ON csc.crssetid = pcs.crssetid
+                                          JOIN {'.courseset::TABLE."} ccs ON ccs.id = csc.crssetid)
+                                      ON pcs.prgid = cur.id
+                               {$coursesetcustomfieldjoin})
+                           ON (crs.id = csc.courseid OR crs.id = curcrs.courseid)
+                              AND curass.curriculumid = cur.id
+                              AND curass.userid = u.id
+                    {$class_custom_field_join} ";
         }
 
         //obtain SQL conditions related to the parent report's curriculum-course-class filter
@@ -330,7 +359,7 @@ class user_class_completion_details_report extends user_class_completion_report 
         }
 
         $total_elements_sql = 'SELECT count(*)
-                                 FROM {'. coursecompletion::TABLE .'} course_completion
+                                 FROM {'.coursecompletion::TABLE.'} course_completion
                                 WHERE crs.id = course_completion.courseid';
 
         $elements_passed_sql = 'SELECT COUNT(*) '. $this->get_elements_sql();
@@ -678,13 +707,15 @@ class user_class_completion_details_report extends user_class_completion_report 
             //we want to make sure the current row's course is assigned to one of the
             //appropriate curricula and also that the current user is a member of that
             //same curriculum
-            return 'EXISTS (SELECT *
-                              FROM {'. curriculumstudent::TABLE .'} curstu
-                              JOIN {'. curriculumcourse::TABLE ."} curcrs
-                                ON curstu.curriculumid = curcrs.curriculumid
+            return 'EXISTS (SELECT \'x\'
+                              FROM {'.curriculumstudent::TABLE.'} curstu
+                         LEFT JOIN {'.curriculumcourse::TABLE.'} curcrs ON curstu.curriculumid = curcrs.curriculumid
+                         LEFT JOIN ({'.crssetcourse::TABLE.'} csc
+                                    JOIN {'.programcrsset::TABLE."} pcs ON pcs.crssetid = csc.crssetid
+                                   ) ON pcs.prgid = curstu.curriculumid
                              WHERE u.id = curstu.userid
-                               AND crs.id = curcrs.courseid
-                               AND curcrs.curriculumid IN ({$cur_id_list}))";
+                                   AND crs.id = curcrs.courseid OR crs.id = csc.courseid
+                                   AND curstu.curriculumid IN ({$cur_id_list}))";
         }
 
         //not filtering
@@ -1003,23 +1034,22 @@ class user_class_completion_details_report extends user_class_completion_report 
 
             $curriculum_sql = 'SELECT SUM(credits) FROM (
                                    SELECT DISTINCT u.id AS userid, cls.id AS classid, stu.credits
-                                     FROM {'. user::TABLE .'} u
-                                     JOIN {'. student::TABLE .'} stu
-                                       ON u.id = stu.userid {$status_clause}
-                                     JOIN {'. pmclass::TABLE .'} cls
-                                       ON stu.classid = cls.id
-                                     JOIN {'. curriculumcourse::TABLE .'} curcrs
-                                       ON cls.courseid = curcrs.courseid
-                                     JOIN {'. curriculumstudent::TABLE .'} curstu
-                                       ON u.id = curstu.userid
-                                     JOIN {'. curriculum::TABLE .'} cur
-                                       ON curstu.curriculumid = cur.id
-                                      AND curcrs.curriculumid = curstu.curriculumid
-                                    WHERE stu.completestatusid = '. STUSTATUS_PASSED ."
-                                      AND {$filter_clause}
-                                     {$ccc_sql}
-                                     AND {$permissions_filter}
-                                     AND {$startdate_condition}) c";
+                                     FROM {'.user::TABLE.'} u
+                                     JOIN {'.student::TABLE.'} stu ON u.id = stu.userid {$status_clause}
+                                     JOIN {'.pmclass::TABLE.'} cls ON stu.classid = cls.id
+                                     JOIN {'.curriculumstudent::TABLE.'} curstu ON u.id = curstu.userid
+                                LEFT JOIN {'.curriculumcourse::TABLE.'} curcrs ON curcrs.curriculumid = curstu.curriculumid
+                                          AND cls.courseid = curcrs.courseid
+                                LEFT JOIN ({'.crssetcourse::TABLE.'} csc
+                                           JOIN {'.programcrsset::TABLE.'} pcs ON pcs.crssetid = csc.crssetid
+                                          ) ON csc.courseid = cls.courseid
+                                          AND pcs.prgid = curstu.curriculumid
+                                     JOIN {'.curriculum::TABLE.'} cur ON curstu.curriculumid = cur.id
+                                    WHERE stu.completestatusid = '.STUSTATUS_PASSED."
+                                          AND {$filter_clause}
+                                    {$ccc_sql}
+                                          AND {$permissions_filter}
+                                          AND {$startdate_condition}) c";
 
             //obtain the actual number
             $curriculum_num = $DB->get_field_sql($curriculum_sql, $params);
@@ -1029,26 +1059,25 @@ class user_class_completion_details_report extends user_class_completion_report 
                 $noncurriculum_num = 0;
             } else {
                 $noncurriculum_sql = 'SELECT SUM(stu.credits)
-                                        FROM {'. user::TABLE .'} u
-                                        JOIN {'. student::TABLE ."} stu
-                                          ON u.id = stu.userid {$status_clause}
-                                        JOIN {". pmclass::TABLE .'} cls
-                                          ON stu.classid = cls.id
-                                   LEFT JOIN ({'. curriculumcourse::TABLE .'} curcrs
-                                              JOIN {'. curriculumstudent::TABLE .'} curstu
-                                                ON curcrs.curriculumid = curstu.curriculumid)
-                                          ON cls.courseid = curcrs.courseid
-                                         AND stu.userid = curstu.userid
-                                   LEFT JOIN {'. curriculum::TABLE .'} cur
-                                          ON cur.id = 0
+                                        FROM {'.user::TABLE.'} u
+                                        JOIN {'.student::TABLE."} stu ON u.id = stu.userid {$status_clause}
+                                        JOIN {".pmclass::TABLE.'} cls ON stu.classid = cls.id
+                                   LEFT JOIN {'.curriculumstudent::TABLE.'} curstu ON stu.userid = curstu.userid
+                                   LEFT JOIN {'.curriculumcourse::TABLE.'} curcrs ON curcrs.curriculumid = curstu.curriculumid
+                                             AND cls.courseid = curcrs.courseid
+                                   LEFT JOIN ({'.crssetcourse::TABLE.'} csc
+                                              JOIN {'.programcrsset::TABLE.'} pcs ON pcs.crssetid = csc.crssetid
+                                             ) ON csc.courseid = cls.courseid
+                                             AND pcs.prgid = curstu.curriculumid
+                                   LEFT JOIN {'.curriculum::TABLE.'} cur ON cur.id = 0
                                        WHERE curstu.id IS NULL
-                                         AND stu.userid = u.id
-                                         AND stu.completestatusid = '. STUSTATUS_PASSED .'
-                                         AND '. table_report::PARAMETER_TOKEN ."
-                                        AND {$filter_clause}
-                                        {$ccc_sql}
-                                        AND {$permissions_filter}
-                                        AND {$startdate_condition}";
+                                             AND stu.userid = u.id
+                                             AND stu.completestatusid = '.STUSTATUS_PASSED.'
+                                             AND '.table_report::PARAMETER_TOKEN."
+                                             AND {$filter_clause}
+                                       {$ccc_sql}
+                                             AND {$permissions_filter}
+                                             AND {$startdate_condition}";
                 //add filtering to the query
                 $noncurriculum_sql = $this->get_complete_sql_query(false, $noncurriculum_sql, $params);
                 if (!empty($noncurriculum_sql) && !empty($noncurriculum_sql[0])) {
@@ -1158,7 +1187,7 @@ class user_class_completion_details_report extends user_class_completion_report 
 
         $levels = array();
         $no_custom_fields = true;
-        foreach (array('curriculum', 'course', 'class') as $entity) {
+        foreach (array('curriculum', 'courseset', 'course', 'class') as $entity) {
             $level = \local_eliscore\context\helper::get_level_from_name($entity);
             if ($level) {
                 $levels[] = $level;

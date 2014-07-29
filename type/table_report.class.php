@@ -1616,13 +1616,14 @@ abstract class table_report extends php_report {
      * @param mixed $exportformat data export format
      */
     public function append_data(&$lastrow, $lastrec, $currentrec, $exportformat) {
+        $newrec = $this->transform_record(clone($currentrec), $exportformat);
         foreach ($lastrec as $key => $value) {
             $curvalues = empty($lastrow->$key) ? array() : explode($this->get_multivalued_separator($exportformat), $lastrow->$key);
-            if (!empty($currentrec->$key) && $value != $currentrec->$key && !in_array($currentrec->$key, $curvalues)) {
+            if (!empty($newrec->$key) && $value != $newrec->$key && !in_array($newrec->$key, $curvalues)) {
                 if (empty($lastrow->$key)) {
                     $lastrow->$key = '';
                 }
-                $lastrow->$key .= $this->get_multivalued_separator($exportformat).$currentrec->$key;
+                $lastrow->$key .= $this->get_multivalued_separator($exportformat).$newrec->$key;
             }
         }
     }

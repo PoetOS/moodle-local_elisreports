@@ -34,6 +34,7 @@ $string['column_completion'] = 'Status';
 $string['column_completiondate'] = 'Completion Date';
 $string['column_completionelements'] = 'Learning Objectives';
 $string['column_coursename'] = 'Course';
+$string['column_courseset'] = 'Course Set';
 $string['column_credits'] = 'Credits Earned';
 $string['column_curriculumname'] = 'Program';
 $string['column_environment'] = 'Environment';
