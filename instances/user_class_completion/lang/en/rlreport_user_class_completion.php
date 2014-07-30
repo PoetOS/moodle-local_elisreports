@@ -132,6 +132,9 @@ $string['user_class_completion_country_help'] = '<p>This field represents the co
 $string['user_class_completion_course'] = 'Course Description';
 $string['user_class_completion_course_help'] = '<p>This field represents the course description of users to be included in this report.</p>';
 
+$string['user_class_completion_courseset'] = 'Course Set';
+$string['user_class_completion_courseset_help'] = '<p>This field represents the course set of users to be included in this report.</p>';
+
 $string['user_class_completion_curriculum'] = 'Program';
 $string['user_class_completion_curriculum_help'] = '<p>This field represents the program of users to be included in this report.</p>';
 

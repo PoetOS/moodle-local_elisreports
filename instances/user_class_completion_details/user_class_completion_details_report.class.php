@@ -212,6 +212,7 @@ class user_class_completion_details_report extends user_class_completion_report 
      * @return  string            The report's main sql statement
      */
     function get_report_sql($columns) {
+        global $DB;
         $params = array();
 
         //dependencies
@@ -311,19 +312,38 @@ class user_class_completion_details_report extends user_class_completion_report 
         $curriculum_select  = '';
         $curriculum_join    = '';
 
-        if ($has_fields || $this->showcoursesetfields) {
+        // Check for courseset filter
+        $coursesetfilter = php_report_filtering_get_active_filter_values($this->parentname, 'filter-ccc-courseset-name', $this->filter);
+        $coursesetsql = 'TRUE';
+        $coursesetjointype = 'LEFT';
+        if (!empty($coursesetfilter[0]['value'])) {
+            list($inoreq, $coursesetparams) = $DB->get_in_or_equal($coursesetfilter[0]['value'], SQL_PARAMS_NAMED, 'crssetparam');
+            if (!empty($inoreq)) {
+                $coursesetsql = "csc.crssetid {$inoreq}";
+                $coursesetjointype = '';
+                $params = array_merge($params, $coursesetparams);
+            }
+        }
+
+        if ($has_fields || $this->showcoursesetfields || !empty($coursesetfilter[0]['value'])) {
             $curriculum_select = ' cur.id AS curid,';
-            $curriculum_join = '
-                    LEFT JOIN ({'.curriculumstudent::TABLE.'} curass
-                                    JOIN {'.curriculum::TABLE.'} cur ON curass.curriculumid = cur.id
-                               LEFT JOIN {'.curriculumcourse::TABLE."} curcrs ON curcrs.curriculumid = curass.curriculumid
-                               {$curriculum_custom_field_join}
-                               LEFT JOIN ({".programcrsset::TABLE.'} pcs
-                                          JOIN {'.crssetcourse::TABLE.'} csc ON csc.crssetid = pcs.crssetid
-                                          JOIN {'.courseset::TABLE."} ccs ON ccs.id = csc.crssetid)
-                                      ON pcs.prgid = cur.id
-                               {$coursesetcustomfieldjoin})
-                           ON (crs.id = csc.courseid OR crs.id = curcrs.courseid)
+            $curriculum_join = "
+                    {$coursesetjointype} JOIN ({".curriculumstudent::TABLE.'} curass
+                                    JOIN {'.curriculum::TABLE.'} cur ON curass.curriculumid = cur.id ';
+            $curcrscondition = '';
+            if (empty($coursesetfilter[0]['value'])) {
+                $curriculum_join .= '
+                        LEFT JOIN {'.curriculumcourse::TABLE.'} curcrs ON curcrs.curriculumid = curass.curriculumid';
+                $curcrscondition = 'OR crs.id = curcrs.courseid';
+            }
+            $curriculum_join .= "
+                    {$curriculum_custom_field_join}
+                    {$coursesetjointype} JOIN ({".programcrsset::TABLE.'} pcs
+                                               JOIN {'.crssetcourse::TABLE.'} csc ON csc.crssetid = pcs.crssetid
+                                               JOIN {'.courseset::TABLE."} ccs ON ccs.id = csc.crssetid)
+                                           ON pcs.prgid = cur.id
+                                    {$coursesetcustomfieldjoin})
+                           ON (crs.id = csc.courseid {$curcrscondition})
                               AND curass.curriculumid = cur.id
                               AND curass.userid = u.id
                     {$class_custom_field_join} ";
@@ -384,22 +404,19 @@ class user_class_completion_details_report extends user_class_completion_report 
                        {$curriculum_select}
                        crs.id AS courseid,
                        cls.id AS classid
-                  FROM {". user::TABLE .'} u
-                  JOIN {'. student::TABLE .'} stu
-                    ON u.id = stu.userid
-                  JOIN {'. pmclass::TABLE .'} cls
-                    ON stu.classid = cls.id
-                  JOIN {'.course::TABLE."} crs
-                    ON cls.courseid = crs.id
-             LEFT JOIN {local_elisprogram_env} env
-                    ON crs.environmentid = env.id
+                  FROM {".user::TABLE.'} u
+                  JOIN {'.student::TABLE.'} stu ON u.id = stu.userid
+                  JOIN {'.pmclass::TABLE.'} cls ON stu.classid = cls.id
+                  JOIN {'.course::TABLE."} crs ON cls.courseid = crs.id
+             LEFT JOIN {local_elisprogram_env} env ON crs.environmentid = env.id
                  {$curriculum_join}
                  {$student_curriculum_join}
-                 WHERE ". table_report::PARAMETER_TOKEN ."
-                   AND {$permissions_filter1}
-                 {$student_status_sql}
-                   AND {$startdate_condition}
-                   AND {$ccc_conditions1}
+                 WHERE ".table_report::PARAMETER_TOKEN."
+                       AND {$permissions_filter1}
+                       AND {$coursesetsql}
+                       {$student_status_sql}
+                       AND {$startdate_condition}
+                       AND {$ccc_conditions1}
 
                 UNION
 
@@ -421,23 +438,21 @@ class user_class_completion_details_report extends user_class_completion_report 
                        {$curriculum_select}
                        crs.id AS courseid,
                        cls.id AS classid
-                  FROM {". user::TABLE .'} u
-                  JOIN {'. instructor::TABLE .'} inst
-                    ON u.id = inst.userid
-                  JOIN {'. pmclass::TABLE .'} cls
-                    ON inst.classid = cls.id
-                  JOIN {'.course::TABLE.'} crs
-                    ON cls.courseid = crs.id
+                  FROM {".user::TABLE.'} u
+                  JOIN {'.instructor::TABLE.'} inst ON u.id = inst.userid
+                  JOIN {'.pmclass::TABLE.'} cls ON inst.classid = cls.id
+                  JOIN {'.course::TABLE.'} crs ON cls.courseid = crs.id
              LEFT JOIN {local_elisprogram_env} env
                     ON crs.environmentid = env.id
              LEFT JOIN {'.student::TABLE."} stu ON stu.userid = u.id
                  {$curriculum_join}
-                 WHERE ". table_report::PARAMETER_TOKEN ."
-                   AND {$permissions_filter2}
-                 {$instructor_status_sql}
-                   AND {$startdate_condition}
-                   AND {$ccc_conditions2}
-                 {$instructor_curriculum_where_condition}";
+                 WHERE ".table_report::PARAMETER_TOKEN.
+                       (empty($coursesetfilter[0]['value']) ? '' : 'AND FALSE')."
+                       AND {$permissions_filter2}
+                       {$instructor_status_sql}
+                       AND {$startdate_condition}
+                       AND {$ccc_conditions2}
+                       {$instructor_curriculum_where_condition}";
 
         return array($sql, $params);
     }
@@ -695,8 +710,6 @@ class user_class_completion_details_report extends user_class_completion_report 
      * @return string The approrpriate EXISTS clause, or false if filter is inactive
      */
     function get_curriculum_exists_clause() {
-		global $CURMAN;
-
         //check for the appropriate submitted parameter value(s)
         $values = php_report_filtering_get_active_filter_values($this->parentname, 'filter-ccc-curriculum-name', $this->filter);
 
@@ -1020,12 +1033,23 @@ class user_class_completion_details_report extends user_class_completion_report 
         }
         //error_log("UCCDR::get_total_credits() - filter_clause = {$filter_clause}");
 
+        // Check for courseset filter
+        $coursesetfilter = php_report_filtering_get_active_filter_values($this->parentname, 'filter-ccc-courseset-name', $this->filter);
+        $coursesetsql = 'TRUE';
+        if (!empty($coursesetfilter[0]['value'])) {
+            list($inoreq, $coursesetparams) = $DB->get_in_or_equal($coursesetfilter[0]['value'], SQL_PARAMS_NAMED, 'crssetparam');
+            if (!empty($inoreq)) {
+                $coursesetsql = "csc.crssetid {$inoreq}";
+                $params = array_merge($params, $coursesetparams);
+            }
+        }
+
         /**
          * Calculate the total number of distinct credits in the report
          */
-        if ($this->_show_curricula || $filtering_cur_customfield) {
-            //we are showing curricula, so we need to account for curriculum and
-            //non-curriculum cases
+        if ($this->_show_curricula || $filtering_cur_customfield || !empty($coursesetfilter[0]['value'])) {
+            // we are showing curricula, so we need to account for curriculum and
+            // non-curriculum cases
 
             if (!$this->_show_curricula && $filtering_cur_customfield) {
                 //special case: filtering by customfields when showing no curriculum info
@@ -1035,8 +1059,9 @@ class user_class_completion_details_report extends user_class_completion_report 
             $curriculum_sql = 'SELECT SUM(credits) FROM (
                                    SELECT DISTINCT u.id AS userid, cls.id AS classid, stu.credits
                                      FROM {'.user::TABLE.'} u
-                                     JOIN {'.student::TABLE.'} stu ON u.id = stu.userid {$status_clause}
-                                     JOIN {'.pmclass::TABLE.'} cls ON stu.classid = cls.id
+                                     JOIN {'.student::TABLE."} stu ON u.id = stu.userid
+                                   {$status_clause}
+                                     JOIN {".pmclass::TABLE.'} cls ON stu.classid = cls.id
                                      JOIN {'.curriculumstudent::TABLE.'} curstu ON u.id = curstu.userid
                                 LEFT JOIN {'.curriculumcourse::TABLE.'} curcrs ON curcrs.curriculumid = curstu.curriculumid
                                           AND cls.courseid = curcrs.courseid
@@ -1048,13 +1073,14 @@ class user_class_completion_details_report extends user_class_completion_report 
                                     WHERE stu.completestatusid = '.STUSTATUS_PASSED."
                                           AND {$filter_clause}
                                     {$ccc_sql}
+                                          AND {$coursesetsql}
                                           AND {$permissions_filter}
                                           AND {$startdate_condition}) c";
 
             //obtain the actual number
             $curriculum_num = $DB->get_field_sql($curriculum_sql, $params);
 
-            if ($filtering_cur_customfield) {
+            if ($filtering_cur_customfield || !empty($coursesetfilter[0]['value'])) {
                 //if we are filtering by curriculum customfields, there will never be any non-curriculum results
                 $noncurriculum_num = 0;
             } else {
