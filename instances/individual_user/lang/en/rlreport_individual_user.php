@@ -28,6 +28,7 @@ defined('MOODLE_INTERNAL') || die();
 $string['anyvalue'] = 'Select...';
 $string['column_completion_element'] = 'Learning Objective';
 $string['column_score'] = 'Score';
+$string['courseset_summary'] = 'is {$a->percentcomplete}% complete Course Set: {$a->name}';
 $string['displayname'] = 'Individual User Report';
 $string['filter_autocomplete_idnumber'] = 'IDNumber';
 $string['filter_autocomplete_firstname'] = 'First Name';

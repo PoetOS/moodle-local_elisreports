@@ -447,7 +447,21 @@ class individual_user_report extends table_report {
                                          ? get_string('na', $this->lang_file)
                                          : $lastrecord->curriculum_name;
             $lastrecord->score .= $lastrecord->curriculum_name;
-
+            if (!empty($lastrecord->prgid) && ($prg = new curriculum($lastrecord->prgid))) {
+                foreach ($prg->crssets as $prgcrsset) {
+                    $crsset = new courseset($prgcrsset->crssetid);
+                    $crsset->load();
+                    $percntcomplete = 0;
+                    $prgcrsset->is_complete($lastrecord->curuserid, $percntcomplete);
+                    $lastrecord->score .= "\n";
+                    if ($export_format == php_report::$EXPORT_FORMAT_HTML) {
+                        $lastrecord->score .= '<br/>';
+                    }
+                    $lastrecord->score .= get_string('courseset_summary', $this->lang_file, array(
+                        'percentcomplete' => round($percntcomplete, 2),
+                        'name'            => $crsset->name));
+                }
+            }
             return $lastrecord;
         } else {
             return null;
@@ -522,6 +536,7 @@ class individual_user_report extends table_report {
                     cur.reqcredits AS reqcnt,
                     cur.id AS prgid,
                     crs.id AS courseid,
+                    usr.id AS curuserid,
                     ({$numcomplete_subquery}) AS acqcnt
                 FROM {". course::TABLE ."} crs
                 JOIN {". pmclass::TABLE ."} cls
