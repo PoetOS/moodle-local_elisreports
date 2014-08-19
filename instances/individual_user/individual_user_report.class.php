@@ -234,13 +234,12 @@ class individual_user_report extends table_report {
         $autocopts['selection_enabled'] = (!isset($permfilter->select) || $permfilter->select != 'FALSE') ? true : false;
         $autocopts['restriction_sql'] = $permfilter;
 
-        $last_user = $this->get_chosen_userid();
-        $cm_user_id = empty($last_user) ? cm_get_crlmuserid($USER->id) : $last_user;
-        if ($cm_user_id && ($cmuser = new user($cm_user_id))) {
+        $cmuserid = cm_get_crlmuserid($USER->id);
+        if ($cmuserid && ($cmuser = new user($cmuserid))) {
             $cmuser->load();
             $autocopts['defaults'] = array(
                     'label' => $cmuser->moodle_fullname(),
-                    'id' => $cm_user_id
+                    'id' => $cmuserid
                 );
         }
 

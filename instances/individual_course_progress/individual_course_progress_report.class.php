@@ -271,13 +271,12 @@ class individual_course_progress_report extends table_report {
         $autocomplete_opts['selection_enabled'] = (!isset($permissions_filter->select) || $permissions_filter->select != 'FALSE') ? true : false;
         $autocomplete_opts['restriction_sql'] = $permissions_filter;
 
-        $last_user = $this->get_chosen_userid();
-        $cm_user_id = empty($last_user) ? cm_get_crlmuserid($USER->id) : $last_user;
-        if ($cm_user_id && ($cmuser = new user($cm_user_id))) {
+        $cmuserid = cm_get_crlmuserid($USER->id);
+        if ($cmuserid && ($cmuser = new user($cmuserid))) {
             $cmuser->load();
             $autocomplete_opts['defaults'] = array(
                 'label' => $cmuser->moodle_fullname(),
-                'id' => $cm_user_id
+                'id' => $cmuserid
             );
         }
 
