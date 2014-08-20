@@ -427,11 +427,29 @@ class individual_user_report extends table_report {
      * @return stdClass  The reformatted record
      */
     function transform_group_column_summary($lastrecord, $nextrecord, $export_format) {
+        global $DB;
         $last_curr = $lastrecord->curriculum_name;
         $next_curr = (!empty($nextrecord->curriculum_name)) ? $nextrecord->curriculum_name : '';
 
         if ($last_curr != $next_curr) {
-            $acqcnt = !empty($lastrecord->acqcnt) ? $lastrecord->acqcnt : 0;
+            // Figure out the number of completed credits for the curriculum
+            $numcompletesubquery = 'SELECT SUM(src.credits) FROM
+                                           (SELECT innerclsenr.credits AS credits
+                                              FROM {'.student::TABLE.'} innerclsenr
+                                              JOIN {'.pmclass::TABLE.'} innercls ON innercls.id = innerclsenr.classid
+                                              JOIN {'.course::TABLE.'} innercrs ON innercls.courseid = innercrs.id
+                                         LEFT JOIN {'.curriculumcourse::TABLE.'} innercurcrs ON innercurcrs.courseid = innercrs.id
+                                         LEFT JOIN ({'.programcrsset::TABLE.'} innerpcs
+                                                    JOIN {'.crssetcourse::TABLE.'} innercsc ON innerpcs.crssetid = innercsc.crssetid)
+                                                ON innercrs.id = innercsc.courseid
+                                             WHERE innerclsenr.userid = ?
+                                                   AND (innercurcrs.curriculumid = ? OR innerpcs.prgid = ?)
+                                                   AND innerclsenr.completestatusid = ?
+                                          GROUP BY innerclsenr.id) src';
+            $params = array($lastrecord->curuserid, $lastrecord->prgid, $lastrecord->prgid, STUSTATUS_PASSED);
+            if (!($acqcnt = $DB->get_field_sql($numcompletesubquery, $params))) {
+                $acqcnt = 0;
+            }
             $reqcnt = !empty($lastrecord->reqcnt) ? $lastrecord->reqcnt : 0;
 
             $lastrecord->element = get_string('footer_has_earned',
@@ -509,19 +527,6 @@ class individual_user_report extends table_report {
             }
         }
 
-        // Figure out the number of completed credits for the curriculum
-        $numcomplete_subquery = 'SELECT SUM(DISTINCT innerclsenr.credits)
-                                   FROM {'.student::TABLE.'} innerclsenr
-                                   JOIN {'.pmclass::TABLE.'} innercls ON innercls.id = innerclsenr.classid
-                                   JOIN {'.course::TABLE.'} innercrs ON innercls.courseid = innercrs.id
-                              LEFT JOIN {'.curriculumcourse::TABLE.'} innercurcrs ON innercurcrs.courseid = innercrs.id
-                              LEFT JOIN ({'.programcrsset::TABLE.'} innerpcs
-                                         JOIN {'.crssetcourse::TABLE.'} innercsc ON innerpcs.crssetid = innercsc.crssetid)
-                                     ON innercrs.id = innercsc.courseid
-                                  WHERE innerclsenr.userid = usr.id
-                                        AND (innercurcrs.curriculumid = cur.id OR innerpcs.prgid = cur.id)
-                                        AND innerclsenr.completestatusid = :p_completestatus';
-
         // Main query
         $sql = "SELECT DISTINCT {$columns},
                     cur.id IS NULL AS isnull,
@@ -536,8 +541,7 @@ class individual_user_report extends table_report {
                     cur.reqcredits AS reqcnt,
                     cur.id AS prgid,
                     crs.id AS courseid,
-                    usr.id AS curuserid,
-                    ({$numcomplete_subquery}) AS acqcnt
+                    usr.id AS curuserid
                 FROM {". course::TABLE ."} crs
                 JOIN {". pmclass::TABLE ."} cls
                     ON cls.courseid=crs.id
