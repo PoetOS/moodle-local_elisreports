@@ -244,7 +244,7 @@ class course_progress_summary_report extends table_report {
                              get_string('bar_column_progress',
                                  'rlreport_course_progress_summary'),
                              'progress_bar',
-                             'COUNT(DISTINCT '. $DB->sql_concat('comp.id', "'_'", 'enrol.id') .') AS numprogress',
+                             'COUNT(DISTINCT '.$DB->sql_concat('comp.id', "'_'", 'enrol.id').') AS numprogress',
                              'center', '$e');
 
         $columns[] = new table_report_column(
@@ -280,7 +280,7 @@ class course_progress_summary_report extends table_report {
      *                  or '' if no grouping should be used
      */
     function get_report_sql_groups() {
-        return 'crs.id, comp.id';
+        return 'crs.id';
     }
 
     /**
