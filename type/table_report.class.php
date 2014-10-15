@@ -977,6 +977,15 @@ abstract class table_report extends php_report {
     }
 
     /**
+     * Add relevant header info to the Excel spreadsheet output.
+     *
+     * @param PHPExcel $excel The report Excel object we are using
+     */
+    function print_excel_header($excel) {
+        // Do nothing, but allow the child class to override this.
+    }
+
+    /**
      * Normalize column widths
      *
      * @param  float array  $widths       Array of column widths, in pixels
@@ -1600,6 +1609,8 @@ abstract class table_report extends php_report {
         switch ($exportformat) {
             case php_report::$EXPORT_FORMAT_HTML:
                 return "<br/>\n";
+            case php_report::$EXPORT_FORMAT_EXCEL:
+                return "\n";
             case php_report::$EXPORT_FORMAT_PDF:
                 return "\n";
             default:

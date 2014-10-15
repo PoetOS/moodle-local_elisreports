@@ -769,6 +769,8 @@ class php_report_export_pdf extends php_report_export {
                 //already tried to fetch the next record, so use it
                 $datum = $next_datum;
             }
+
+            $recordset->close();
         }
 
         return $row;

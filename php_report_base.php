@@ -310,8 +310,9 @@ abstract class php_report {
      * @return  string array  List of allowable formats
      */
     static function get_allowable_export_formats() {
-        //currently, only PDF and CSV export formats are fully implemented
+        // Currently PDF, CSV & MS-EXCEL export formats are implemented
         return array(php_report::$EXPORT_FORMAT_PDF,
+                     php_report::$EXPORT_FORMAT_EXCEL,
                      php_report::$EXPORT_FORMAT_CSV);
     }
 
@@ -479,6 +480,11 @@ abstract class php_report {
                 $alt_text = get_string('export_link_'.$allowable_export_format, 'local_elisreports');
                 //export link, with hash for smooth flow
                 $export_url = $CFG->wwwroot.'/local/elisreports/download.php?id='.$this->id.'&gas_gauge_page=' . $this->gas_gauge_page . '&format='.$allowable_export_format.'#';
+
+                // Convert format types to have more sensible icons.
+                $allowable_export_format = ($allowable_export_format == 'csv') ? 'txt' : $allowable_export_format; // Assign "text" icon for csv.
+                $allowable_export_format = ($allowable_export_format == 'excel') ? 'xls' : $allowable_export_format; // Assign "spreadsheet" icon for excel.
+
                 //icon url
                 $icon = 'f/'.mimeinfo('icon', "foo.$allowable_export_format");
 

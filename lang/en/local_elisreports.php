@@ -21,6 +21,7 @@ $string['config_title_displayed'] = 'Report Title';
 $string['defaulttitle'] = 'Untitled Report';
 $string['eternal_cache'] = 'Cache Reports Until Logout';
 $string['export_link_csv'] = 'Download CSV';
+$string['export_link_excel'] = 'Download Excel Spreadsheet';
 $string['export_link_pdf'] = 'Download PDF';
 $string['group_class_id'] = ' group';
 $string['infocurrent'] = 'This information is current as of {$a}';
