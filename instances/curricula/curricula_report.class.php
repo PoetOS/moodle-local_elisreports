@@ -123,8 +123,7 @@ class curricula_report extends table_report {
      */
     function get_export_formats() {
         // allow various export formats
-        return array(php_report::$EXPORT_FORMAT_PDF,
-                     php_report::$EXPORT_FORMAT_CSV);
+        return array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_EXCEL, php_report::$EXPORT_FORMAT_CSV);
     }
 
     /**
@@ -195,15 +194,15 @@ class curricula_report extends table_report {
                      new table_report_column("u.lastname AS lastname",
                              get_string('column_name', 'rlreport_curricula'),
                              'student', 'left', false, true, true,
-                             array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_HTML)),
+                             array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_EXCEL, php_report::$EXPORT_FORMAT_HTML)),
                      new table_report_column("u.lastname AS userlastname",
                              get_string('column_lastname', 'rlreport_curricula'),
                              'student_lastname', 'left', false, true, true,
-                             array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL)),
+                             array(php_report::$EXPORT_FORMAT_CSV)),
                      new table_report_column("u.firstname AS firstname",
                              get_string('column_firstname', 'rlreport_curricula'),
                              'student_firstname', 'left', false, true, true,
-                             array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL)),
+                             array(php_report::$EXPORT_FORMAT_CSV)),
                      new table_report_column('cc.name AS curname',
                                               get_string('column_curriculum_name', 'rlreport_curricula'),
                                              'curriculum_name',
@@ -444,8 +443,7 @@ class curricula_report extends table_report {
             $element->lastname = "<span class=\"external_report_link\">
                              <a href=\"{$single_student_report_url}\">{$fullname}</a>
                              </span>";
-        } else if ($export_format != php_report::$EXPORT_FORMAT_CSV &&
-                   $export_format != php_report::$EXPORT_FORMAT_EXCEL) {
+        } else if ($export_format != php_report::$EXPORT_FORMAT_CSV) {
             $element->lastname = $fullname;
         }
 

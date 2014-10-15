@@ -981,7 +981,7 @@ abstract class table_report extends php_report {
      *
      * @param PHPExcel $excel The report Excel object we are using
      */
-    function print_excel_header($excel) {
+    public function print_excel_header($excel) {
         // Do nothing, but allow the child class to override this.
     }
 
@@ -2169,8 +2169,7 @@ function print_table($table, $return=false) {
      *                        possiblities as specified by get_allowable_export_formats
      */
     function get_export_formats() {
-        return array(php_report::$EXPORT_FORMAT_PDF,
-                     php_report::$EXPORT_FORMAT_CSV);
+        return array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_EXCEL, php_report::$EXPORT_FORMAT_CSV);
     }
 
     /**

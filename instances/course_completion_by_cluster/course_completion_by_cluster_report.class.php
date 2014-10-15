@@ -264,11 +264,14 @@ class course_completion_by_cluster_report extends table_report {
 
         //user fullname
         $name_heading = get_string('column_user_name', 'rlreport_course_completion_by_cluster');
-        $name_column = new table_report_column('user.firstname', $name_heading, 'user_name', 'left', false, true, true, array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_HTML));
+        $name_column = new table_report_column('user.firstname', $name_heading, 'user_name', 'left', false, true, true,
+                array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_EXCEL, php_report::$EXPORT_FORMAT_HTML));
         $lastname_heading = get_string('column_lastname', 'rlreport_course_completion_by_cluster');
-        $lastname_column = new table_report_column('user.lastname', $lastname_heading, 'user_name', 'left', false, true, true, array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL));
+        $lastname_column = new table_report_column('user.lastname', $lastname_heading, 'user_name', 'left', false, true, true,
+                array(php_report::$EXPORT_FORMAT_CSV));
         $firstname_heading = get_string('column_firstname', 'rlreport_course_completion_by_cluster');
-        $firstname_column = new table_report_column('user.firstname AS userfirstname', $firstname_heading, 'user_name', 'left', false, true, true, array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL));
+        $firstname_column = new table_report_column('user.firstname AS userfirstname', $firstname_heading, 'user_name', 'left', false, true, true,
+                array(php_report::$EXPORT_FORMAT_CSV));
 
         $result = array($idnumber_column, $name_column, $lastname_column, $firstname_column);
 
@@ -787,8 +790,7 @@ class course_completion_by_cluster_report extends table_report {
                                       $element->useridnumber .'</a></span>';
         }
 
-        if ($export_format != php_report::$EXPORT_FORMAT_CSV &&
-            $export_format != php_report::$EXPORT_FORMAT_EXCEL) {
+        if ($export_format != php_report::$EXPORT_FORMAT_CSV) {
             //use the user's full name
             $element->firstname = php_report::fullname($datum);
         }

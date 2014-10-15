@@ -203,15 +203,15 @@ class sitewide_course_completion_report extends table_report {
                          new table_report_column('usr.lastname AS r_student',
                                  get_string('column_student', $this->lang_file),
                                  'cssstudent', 'left', true, true, true,
-                                 array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_HTML)),
+                                 array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_EXCEL, php_report::$EXPORT_FORMAT_HTML)),
                          new table_report_column('usr.lastname AS lastname',
                                  get_string('column_student_lastname', $this->lang_file),
                                  'cssstudent', 'left', true, true, true,
-                                 array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL)),
+                                 array(php_report::$EXPORT_FORMAT_CSV)),
                          new table_report_column('usr.firstname AS firstname',
                                  get_string('column_student_firstname', $this->lang_file),
                                  'cssstudent', 'left', true, true, true,
-                                 array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL)),
+                                 array(php_report::$EXPORT_FORMAT_CSV)),
                          new table_report_column('clsenr.completestatusid != 0 AS r_status',
                                                  get_string('column_status', $this->lang_file),
                                                  'cssstatus', 'left', true
@@ -380,8 +380,7 @@ class sitewide_course_completion_report extends table_report {
      * @return  stdClass                  The reformatted record
      */
     function transform_record($record, $export_format) {
-        if ($export_format != php_report::$EXPORT_FORMAT_CSV &&
-            $export_format != php_report::$EXPORT_FORMAT_EXCEL) {
+        if ($export_format != php_report::$EXPORT_FORMAT_CSV) {
             $user = new stdClass;
             $user->firstname = $record->firstname;
             $user->lastname = $record->r_student;

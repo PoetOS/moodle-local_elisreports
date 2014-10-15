@@ -846,7 +846,8 @@ class sitewide_time_summary_report extends table_report {
             }
         } else {
             // dummy field for group column summary label
-            $columns[] = new table_report_column("0 AS gcslabel", '', 'gsclabel', 'right', false, true, true, array(php_report::$EXPORT_FORMAT_HTML, php_report::$EXPORT_FORMAT_PDF));
+            $columns[] = new table_report_column("0 AS gcslabel", '', 'gsclabel', 'right', false, true, true,
+                    array(php_report::$EXPORT_FORMAT_HTML, php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_EXCEL));
             $this->columnfields[] = "0 AS gcslabel";
         }
 

@@ -258,7 +258,8 @@ class php_report_export_excel extends php_report_export {
                 $resetcolumncolours = true;
 
                 // Go through only the headers that actually matter.
-                for ($index = $topmostkey; $index < count($this->report->groupings); $index++) {
+                $maxgroupings = count($this->report->groupings);
+                for ($index = $topmostkey; $index < $maxgroupings; $index++) {
                     $grouping = $this->report->groupings[$index];
 
                     // Set the information in the current grouping based on our report row.
@@ -279,13 +280,13 @@ class php_report_export_excel extends php_report_export {
                         }
 
                         if ($groupingrow) {
-                            // "Below" position with per-column data.
+                            // Handle "Below" position with per-column data.
                             $datumgroupcopy = clone($datumgroup);
                             $datumgroupcopy = $this->report->transform_grouping_header_record($datumgroupcopy, $datum, php_report::$EXPORT_FORMAT_EXCEL);
                             $groupingdisplaytext = $this->report->get_row_content($datumgroupcopy, $groupingrow);
                             $this->add_grouping_table_row($groupingdisplaytext, false, false, $excel, $index);
                         } else {
-                            // "Below" position without per-column data.
+                            // Handle "Below" position without per-column data.
                             $headers = $this->report->transform_grouping_header_label($groupingcurrent, $grouping, $datum, php_report::$EXPORT_FORMAT_EXCEL);
 
                             // Add all headers to the table output.
@@ -300,7 +301,7 @@ class php_report_export_excel extends php_report_export {
                         // Signal that we need to display column headers before the next header that is not of this type / before the next report data entry.
                         $needcolumnsheader = true;
 
-                        // "Above" position without per-column data (single label and value).
+                        // Handle "Above" position without per-column data (single label and value).
                         $headers = $this->report->transform_grouping_header_label($groupingcurrent, $grouping, $datum, php_report::$EXPORT_FORMAT_EXCEL);
 
                         // Add all headers to the table output.

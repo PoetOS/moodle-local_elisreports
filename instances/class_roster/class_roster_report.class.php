@@ -215,15 +215,15 @@ class class_roster_report extends table_report {
         $student = new table_report_column('usr.lastname AS r_student',
                              get_string('column_student', $this->lang_file),
                              'cssstudent', 'left', true, true, true,
-                             array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_HTML));
+                             array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_EXCEL, php_report::$EXPORT_FORMAT_HTML));
         $studentlastname = new table_report_column('usr.lastname AS lastname',
                              get_string('column_student_lastname', $this->lang_file),
                              'cssstudent', 'left', true, true, true,
-                             array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL));
+                             array(php_report::$EXPORT_FORMAT_CSV));
         $studentfirstname = new table_report_column('usr.firstname AS firstname',
                              get_string('column_student_firstname', $this->lang_file),
                              'cssstudent', 'left', true, true, true,
-                             array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL));
+                             array(php_report::$EXPORT_FORMAT_CSV));
         $email = new table_report_column('usr.email AS r_email',
                                              get_string('column_email', $this->lang_file),
                                              'cssemail', 'left', true);
@@ -390,8 +390,7 @@ class class_roster_report extends table_report {
             //reformat userset name(s)
             if (empty($record->r_clst_name)) {
                 $record->r_clst_name = get_string('na','local_elisreports');
-            } elseif ($export_format == php_report::$EXPORT_FORMAT_EXCEL ||
-                $export_format == php_report::$EXPORT_FORMAT_CSV) {
+            } else if ($export_format == php_report::$EXPORT_FORMAT_CSV) {
                 $record->r_clst_name = str_replace(',','/',$record->r_clst_name);
             } else {
                 $record->r_clst_name = str_replace(',','<br>',$record->r_clst_name);
@@ -433,8 +432,7 @@ class class_roster_report extends table_report {
             $userpage = new userpage(array('id' => $record->cmuserid, 'action' => 'view'));
             $record->r_student = '<span class="external_report_link"><a href="'
                                  . $userpage->url .'">' . $fullname .'</a></span>';
-        } else if ($export_format != php_report::$EXPORT_FORMAT_CSV &&
-                   $export_format != php_report::$EXPORT_FORMAT_EXCEL) {
+        } else if ($export_format != php_report::$EXPORT_FORMAT_CSV) {
             $record->r_student = $fullname;
         }
 

@@ -209,11 +209,14 @@ class course_completion_gas_gauge_report extends gas_gauge_table_report {
 
         //user fullname
         $name_heading = get_string('column_fullname', 'rlreport_course_completion_gas_gauge');
-        $name_column = new table_report_column('u.firstname', $name_heading, 'fullname', 'left', false, true, true, array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_HTML));
+        $name_column = new table_report_column('u.firstname', $name_heading, 'fullname', 'left', false, true, true,
+                array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_EXCEL, php_report::$EXPORT_FORMAT_HTML));
         $lastname_heading = get_string('column_lastname', 'rlreport_course_completion_gas_gauge');
-        $lastname_column = new table_report_column('u.lastname', $lastname_heading, 'lastname', 'left', false, true, true, array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL));
+        $lastname_column = new table_report_column('u.lastname', $lastname_heading, 'lastname', 'left', false, true, true,
+                array(php_report::$EXPORT_FORMAT_CSV));
         $firstname_heading = get_string('column_firstname', 'rlreport_course_completion_gas_gauge');
-        $firstname_column = new table_report_column('u.firstname as userfirstname', $firstname_heading, 'firstname', 'left', false, true, true, array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL));
+        $firstname_column = new table_report_column('u.firstname as userfirstname', $firstname_heading, 'firstname', 'left', false, true, true,
+                array(php_report::$EXPORT_FORMAT_CSV));
 
         //percent of completion elements complete
         $percentcomplete_heading = get_string('column_percentcomplete', 'rlreport_course_completion_gas_gauge');
@@ -234,9 +237,9 @@ class course_completion_gas_gauge_report extends gas_gauge_table_report {
         return array(
                 $class_column,
                 $completion_column,
-                $name_column,      // HTML, PDF
-                $lastname_column,  // CSV/EXCEL
-                $firstname_column, // CSV/EXCEL
+                $name_column,      // HTML, PDF, EXCEL
+                $lastname_column,  // CSV
+                $firstname_column, // CSV
                 $percentcomplete_column,
                 $numcomplete_column,
                 $grade_column);
@@ -384,8 +387,7 @@ class course_completion_gas_gauge_report extends gas_gauge_table_report {
             //convert user name to their full name and link to the CM user page for that user
             $userpage = new userpage(array('id' => $record->cmuserid, 'action' => 'view'));
             $record->firstname = '<span class="external_report_link"><a href="'.$userpage->url.'" target="_blank">'.php_report::fullname($record).'</a></span>';
-        } else if ($export_format != php_report::$EXPORT_FORMAT_CSV &&
-                   $export_format != php_report::$EXPORT_FORMAT_EXCEL) {
+        } else if ($export_format != php_report::$EXPORT_FORMAT_CSV) {
             $record->firstname = php_report::fullname($record);
         }
 

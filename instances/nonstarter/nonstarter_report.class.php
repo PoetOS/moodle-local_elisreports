@@ -355,8 +355,7 @@ class nonstarter_report extends table_report {
      * @return  stdClass                  The reformatted record
      */
     function transform_record($record, $export_format) {
-        if ($export_format != php_report::$EXPORT_FORMAT_CSV &&
-            $export_format != php_report::$EXPORT_FORMAT_EXCEL) {
+        if ($export_format != php_report::$EXPORT_FORMAT_CSV) {
             $record->lastname = php_report::fullname($record);
             //unset($record->firstname);
         }
@@ -490,9 +489,12 @@ class nonstarter_report extends table_report {
      */
     function get_columns() {
         return array(
-            new table_report_column('u.lastname AS lastname', get_string('column_studentname', 'rlreport_nonstarter'), 'studentname', 'left', true, true, true, array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_HTML)),
-            new table_report_column('u.lastname AS studentlastname', get_string('column_studentlastname', 'rlreport_nonstarter'), 'studentlastname', 'left', true, true, true, array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL)),
-            new table_report_column('u.firstname AS firstname', get_string('column_studentfirstname', 'rlreport_nonstarter'), 'studentfirstname', 'left', true, true, true, array(php_report::$EXPORT_FORMAT_CSV, php_report::$EXPORT_FORMAT_EXCEL)),
+            new table_report_column('u.lastname AS lastname', get_string('column_studentname', 'rlreport_nonstarter'), 'studentname', 'left', true, true, true,
+                    array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_EXCEL, php_report::$EXPORT_FORMAT_HTML)),
+            new table_report_column('u.lastname AS studentlastname', get_string('column_studentlastname', 'rlreport_nonstarter'), 'studentlastname', 'left', true, true, true,
+                    array(php_report::$EXPORT_FORMAT_CSV)),
+            new table_report_column('u.firstname AS firstname', get_string('column_studentfirstname', 'rlreport_nonstarter'), 'studentfirstname', 'left', true, true, true,
+                    array(php_report::$EXPORT_FORMAT_CSV)),
             new table_report_column('u.idnumber AS idnumber', get_string('column_idnumber', 'rlreport_nonstarter'), 'idnumber', 'left', true)
         );
     }

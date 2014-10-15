@@ -310,10 +310,8 @@ abstract class php_report {
      * @return  string array  List of allowable formats
      */
     static function get_allowable_export_formats() {
-        // Currently PDF, CSV & MS-EXCEL export formats are implemented
-        return array(php_report::$EXPORT_FORMAT_PDF,
-                     php_report::$EXPORT_FORMAT_EXCEL,
-                     php_report::$EXPORT_FORMAT_CSV);
+        // Currently PDF, CSV & MS-EXCEL export formats are implemented.
+        return array(static::$EXPORT_FORMAT_PDF, static::$EXPORT_FORMAT_EXCEL, static::$EXPORT_FORMAT_CSV);
     }
 
     /**
