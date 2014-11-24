@@ -181,17 +181,18 @@ class course_completion_by_cluster_report extends table_report {
                                  'heading'    => $heading_label,
                                  'nofilter'   => true);
 
-        //cluster role dropdown
-        $clusterrole_choices = array();
+        // Cluster role dropdown.
+        $clusterrolechoices = array();
         if ($roles = get_all_roles()) {
             foreach ($roles as $role) {
-                $clusterrole_choices[$role->id] = $role->name;
+                $clusterrolechoices[$role->id] = strip_tags(format_string(!empty($role->name) ? $role->name : $role->shortname, true));
             }
         }
 
-        $clusterrole_options = array('choices'  => $clusterrole_choices,
-                                     'numeric'  => true,
-                                     'nofilter' => true);
+        $clusterrole_options = array(
+            'choices'  => $clusterrolechoices,
+            'numeric'  => true,
+            'nofilter' => true);
 
         //cluster tree / dropdown filter
         $cluster_heading = get_string('filter_cluster', 'rlreport_course_completion_by_cluster');
