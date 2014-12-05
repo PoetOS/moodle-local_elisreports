@@ -379,6 +379,9 @@ class scheduling_page extends workflowpage {
 
     var $cancel_url = '/local/elisreports/schedule.php?action=list';
 
+    /** @var string The section this page belongs to. */
+    public $section = 'rept';
+
     public function get_page_title_default() {
         global $DB;
 
