@@ -295,19 +295,17 @@ class php_report_export_pdf extends php_report_export {
     /**
      * Renders the dispay name of the current report at the top of the PDF
      *
-     * @param  FPDF reference  $newpdf  The PDF being created
+     * @param FPDF reference $newpdf The PDF being created.
+     * @param string $reporttitle The title string for the report.
      */
-    function render_report_name(&$newpdf) {
+    function render_report_name(&$newpdf, $reporttitle) {
         //stash the old font size
         $font_size = $newpdf->getFontSizePt();
-
-        //determine the name to display
-        $display_name = $this->report->get_display_name();
 
         //determine render height
         $test_pdf = $this->initialize_pdf();
         $initial_y_offset = $test_pdf->GetY();
-        $test_pdf->Cell(self::page_width - self::marginx - self::marginy, 0.4, $display_name);
+        $test_pdf->Cell(self::page_width - self::marginx - self::marginy, 0.4, $reporttitle);
         $test_pdf->Ln();
         $final_y_offset = $test_pdf->GetY();
 
@@ -319,7 +317,7 @@ class php_report_export_pdf extends php_report_export {
         //increase font size
         $newpdf->SetFontSize(16);
         //render the report's display name
-        $newpdf->Cell(self::page_width - self::marginx - self::marginy, 0.4, $display_name);
+        $newpdf->Cell(self::page_width - self::marginx - self::marginy, 0.4, $reporttitle);
 
         //restore font size
         $newpdf->SetFontSize($font_size);
@@ -935,8 +933,11 @@ class php_report_export_pdf extends php_report_export {
      * @param  array           $params   SQL query params
      */
     protected function render_pdf_instance(&$newpdf, $query, $params) {
-        //print the report name
-        $this->render_report_name($newpdf);
+        // print the report title
+        $reporttitle = $this->report->get_pdf_title();
+        if (!empty($reporttitle)) {
+            $this->render_report_name($newpdf, $reporttitle);
+        }
 
         //print an appropriate header
         $this->report->print_pdf_header($newpdf);

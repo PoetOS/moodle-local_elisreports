@@ -964,7 +964,15 @@ abstract class table_report extends php_report {
      * Add report title to report
      */
     function print_report_title() {
-        echo '<div class="php_report_title">'.php_report::get_display_name().'</div>';
+        echo '<div class="php_report_title">'.$this->get_display_name().'</div>';
+    }
+
+    /**
+     * Return PDF Title for report - overload in child classes to customize
+     * @return string the desired PDF report title
+     */
+    public function get_pdf_title() {
+        return $this->get_display_name();
     }
 
     /**
