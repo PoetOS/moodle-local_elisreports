@@ -442,6 +442,7 @@ class individual_user_report extends table_report {
                                                 ON innercrs.id = innercsc.courseid
                                              WHERE innerclsenr.userid = ?
                                                    AND (innercurcrs.curriculumid = ? OR innerpcs.prgid = ?)
+                                                   AND (innercurcrs.id IS NOT NULL OR innerpcs.id IS NOT NULL)
                                                    AND innerclsenr.completestatusid = ?
                                           GROUP BY innerclsenr.id) src';
             $params = array($lastrecord->curuserid, $lastrecord->prgid, $lastrecord->prgid, STUSTATUS_PASSED);
@@ -558,6 +559,7 @@ class individual_user_report extends table_report {
                       LEFT JOIN {".courseset::TABLE."} ccs ON ccs.id = pcs.crssetid
                      ) ON curass.userid = usr.id
                      AND (curcrs.courseid = crs.id OR csc.courseid = crs.id)
+                     AND (curcrs.id IS NOT NULL OR csc.id IS NOT NULL)
            LEFT JOIN {". coursecompletion::TABLE ."} crscomp
                     ON crscomp.courseid = crs.id
            LEFT JOIN {". GRDTABLE ."} grd

@@ -702,9 +702,9 @@ class course_completion_by_cluster_report extends table_report {
                  LEFT JOIN {'.crssetcourse::TABLE.'} csc ON csc.crssetid = pcs.crssetid
                  LEFT JOIN {'.courseset::TABLE.'} ccs ON csc.crssetid = ccs.id
                       JOIN {'.course::TABLE.'} course ON (curriculum_course.courseid = course.id OR csc.courseid = course.id)
+                           AND (curriculum_course.id IS NOT NULL OR csc.id IS NOT NULL)
                  LEFT JOIN ({'.pmclass::TABLE.'} class
-                            JOIN {'.student::TABLE."} enrol ON class.id = enrol.classid)
-                        ON curriculum_assignment.userid = enrol.userid
+                            JOIN {'.student::TABLE."} enrol ON class.id = enrol.classid) ON curriculum_assignment.userid = enrol.userid
                            AND course.id = class.courseid
                  {$completion_tables}
                  {$customfieldsql1}

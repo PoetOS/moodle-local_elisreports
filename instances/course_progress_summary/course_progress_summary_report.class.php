@@ -376,6 +376,7 @@ class course_progress_summary_report extends table_report {
                              LEFT JOIN {'.crssetcourse::TABLE.'} csc2 ON csc2.courseid = cls2.courseid
                              LEFT JOIN {'.programcrsset::TABLE.'} pcs2 ON pcs2.crssetid = csc2.crssetid
                              LEFT JOIN {'.curriculumstudent::TABLE."} curass ON (curcrs2.curriculumid = curass.curriculumid OR pcs2.prgid = curass.curriculumid)
+                                       AND (curcrs2.id IS NOT NULL OR csc2.id IS NOT NULL)
                                        AND curass.userid = enrol2.userid
                                  WHERE enrol.id = enrol2.id
                              {$curr_filter})";

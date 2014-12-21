@@ -286,11 +286,10 @@ function php_report_filtering_get_user_preferences($report_shortname) {
             $SESSION->php_report_default_params[$reportid.'/'.$key] = $val;
             //TBD: Must serialize arrays before storing in user preferences
             //     and unserialize when reading back values!
-            //set_user_preferences(array($reportid.'/'.$key => $val)); // let's save URL params as persistent to avoid random session craziness issues
-
-            //flag this report as having custom parameters set up
-            php_report_filtering_flag_report_as_overridden($report_shortname);
+            // set_user_preferences([$reportid.'/'.$key => $val]); // let's save URL params as persistent to avoid random session craziness issues
         }
+        // Flag this report as having custom parameters set up
+        php_report_filtering_flag_report_as_overridden($report_shortname);
         $user_prefs = array_merge($user_prefs, $SESSION->php_report_default_params);
     } else if (!empty($SESSION->php_report_default_override[$report_shortname])) {
         // using temporary overrides (which contain last known state of form
@@ -580,7 +579,7 @@ class php_report_default_capable_filtering extends generalized_filtering {
         if (!empty($this->preferences_source_data)) {
             //using a pre-defined pool of preferences for API-related reasons,
             //so just convert them to the necessary format
-            //error_log("/local/elisreports/lib/filtering.php::get_preferences() ... !empty(this->preferences_source_data) -> returning");
+            // error_log("/local/elisreports/lib/filtering.php::get_preferences() ... !empty(this->preferences_source_data) -> returning");
             return php_report_filtering_get_per_filter_data($this, $this->preferences_source_data);
         }
 
@@ -637,6 +636,7 @@ class php_report_default_capable_filtering extends generalized_filtering {
 
         if (isset($this->secondary_filterings[$secondary_filtering_key])) {
             //if this is not the primary filtering, use a secondary one
+            // error_log("get_sql_filter::secondary_filterings[$secondary_filtering_key]");
             return $this->secondary_filterings[$secondary_filtering_key]->get_sql_filter($extra, $exceptions, $allow_interactive_filters, $allow_configured_filters);
         }
 
@@ -714,6 +714,7 @@ class php_report_default_capable_filtering extends generalized_filtering {
  */
 function php_report_filtering_get_active_filter_values($report_shortname,$filter_name,&$filter=NULL) {
     global $SESSION;
+    static $init = false;
 
     $result = array();
 
@@ -731,10 +732,10 @@ function php_report_filtering_get_active_filter_values($report_shortname,$filter
     } else {
         // No filter values in the filter object
         // Make sure we have URL params set in session info
-        if (!isset($SESSION->php_report_default_params)) {
+        if (!$init && ((isset($_GET['report']) && $_GET['report'] == $report_shortname) || !isset($SESSION->php_report_default_params))) {
             php_report_filtering_get_user_preferences($report_shortname);
         }
-
+        $init = true;
         if (isset($SESSION->php_report_default_params)) {
             $params = $SESSION->php_report_default_params;
 
