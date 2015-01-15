@@ -1,9 +1,15 @@
 <?php
 
+$string['attachlimit'] = 'Max. Email Attachment Size';
+$string['attachlimit_alwayslink'] = 'Always send only link.';
+$string['attachlimit_disable'] = 'Attachment size unlimited';
 $string['button_cancel'] = 'Cancel';
 $string['button_reset_form'] = 'Reset Form';
 $string['button_save_defaults'] = 'Save Values as Defaults';
 $string['button_show_report'] = 'Show Report';
+$string['canviewattachment_anyonewithlink'] = 'Anyone with the link';
+$string['canviewattachment_linkandpermissions'] = 'Anyone with the link <b>and permissions to view the report</b>';
+$string['whocanviewattachment'] = 'Who can view report link';
 $string['config_always_cache'] = 'Cache until logout';
 $string['config_expanded_by_default'] = 'Expanded By Default';
 $string['config_graph_height'] = 'Graph / Chart Height';

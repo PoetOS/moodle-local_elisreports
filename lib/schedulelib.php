@@ -256,6 +256,12 @@ class scheduling_workflow extends workflow {
         if (isset($values->message)) {
             $data['message'] = $values->message;
         }
+        if (isset($values->attachlimit)) {
+            $data['attachlimit'] = $values->attachlimit;
+        }
+        if (isset($values->canviewattachment)) {
+            $data['canviewattachment'] = $values->canviewattachment;
+        }
         $this->data = serialize($data);
         $this->save();
     }
@@ -1422,6 +1428,12 @@ class scheduling_page extends workflowpage {
         }
         if (isset($workflowdata['message'])) {
             $data->message = $workflowdata['message'];
+        }
+        if (isset($workflowdata['attachlimit'])) {
+            $data->attachlimit = $workflowdata['attachlimit'];
+        }
+        if (isset($workflowdata['canviewattachment'])) {
+            $data->canviewattachment = $workflowdata['canviewattachment'];
         }
         $form->set_data($data);
         $form->display();

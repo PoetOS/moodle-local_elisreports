@@ -475,6 +475,38 @@ class scheduling_form_step_recipients extends moodleform {
 
         $mform->addElement('htmleditor', 'message', '<div class="php_report_bold_header">'.htmlspecialchars(get_string('message', 'local_elisreports')).'</div>');
 
+        // ELIS-8981: link instead of attachment if over limit.
+        $choices = array(
+            0 => get_string('attachlimit_alwayslink', 'local_elisreports'),
+            1 => '1M',
+            2 => '2M',
+            5 => '5M',
+            8 => '8M',
+            10 => '10M',
+            15 => '15M',
+            20 => '20M',
+            25 => '25M',
+            40 => '40M',
+            50 => '50M',
+            60 => '60M',
+            75 => '75M',
+            100 => '100M',
+            150 => '150M',
+            200 => '200M',
+            500 => '500M',
+            1000 => '1G',
+            2000 => '2G',
+            9999 => get_string('attachlimit_disable', 'local_elisreports')
+        );
+        $mform->addElement('select', 'attachlimit', get_string('attachlimit', 'local_elisreports'), $choices);
+        $mform->setDefault('attachlimit', 9999);
+
+        $group = array();
+        $group[] = $mform->createElement('radio', 'canviewattachment', '', get_string('canviewattachment_anyonewithlink', 'local_elisreports'), 0);
+        $group[] = $mform->createElement('radio', 'canviewattachment', '', get_string('canviewattachment_linkandpermissions', 'local_elisreports'), 1, array('disabled' => 'disabled'));
+        $mform->addGroup($group, 'canviewattachment', get_string('whocanviewattachment', 'local_elisreports'), '<br/>', false);
+        $mform->setDefault('canviewattachment', 0);
+
         workflowpage::add_navigation_buttons($mform, scheduling_workflow::STEP_FORMAT);
     }
 
@@ -725,6 +757,15 @@ class scheduling_form_step_confirm extends moodleform {
         $mform->addElement('static', 'format', get_string('format').':', get_string($data['format'], 'local_elisreports'));
         $mform->addElement('static', 'recipients', get_string('recipientslist').':', htmlspecialchars($data['recipients']));
         $mform->addElement('static', 'message', get_string('message', 'message').':', $data['message']);
+        if (empty($data['attachlimit'])) {
+            $attachlimit = get_string('attachlimit_alwayslink', 'local_elisreports');
+        } else if ($data['attachlimit'] >= 9999) {
+            $attachlimit = get_string('attachlimit_disable', 'local_elisreports');
+        } else {
+            $attachlimit = ($data['attachlimit'] >= 1000) ? ((string)($data['attachlimit']/1000).'G') : ((string)$data['attachlimit'].'M');
+        }
+        $mform->addElement('static', 'attachlimit', get_string('attachlimit', 'local_elisreports').':', $attachlimit);
+        $mform->addElement('static', 'canviewattachment', get_string('whocanviewattachment', 'local_elisreports').':', get_string('canviewattachment_anyonewithlink', 'local_elisreports'));
 
         workflowpage::add_navigation_buttons($mform, scheduling_workflow::STEP_RECIPIENTS, workflow::STEP_FINISH);
     }
