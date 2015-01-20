@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2015 Remote Learner.net Inc http://www.remote-learner.net
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  *
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  (C) 2008-2015 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
@@ -379,3 +379,137 @@ function debug_error_log($str) {
     }
 }
 
+/**
+ * Function to create & return directory to save report link when over attachment limit.
+ * @return string|bool the directory in moodledata to store link files, false on error.
+ */
+function get_report_attachment_dir() {
+     global $CFG;
+     $dir = $CFG->dataroot.'/local/elisreports/attachments/';
+     if (!@file_exists($dir) && !@mkdir($dir, 0775, true)) {
+         debug_error_log("get_report_attachment_dir() failed creating directories: {$dir}");
+         return false;
+     }
+     return $dir;
+}
+
+/**
+ * Function to return file attachment filename.
+ * @param int $schedid  the report schedule id
+ * @param string $ext the file extension, i.e. 'csv', 'pdf'
+ * @param string $link the link value for attachment reference.
+ * @return string the filename.
+ */
+function get_report_attachment_filename($schedid, $ext, $link) {
+    return 'report_sched'.$schedid.'_'.$link.'.'.$ext;
+}
+
+/**
+ * Function to return export format code or string extension for code.
+ * @param int|string $exportcodeorext export format input.
+ * @output int|string|bool correspoinding export format output, false on error.
+ */
+function get_attachment_export_format($exportcodeorext) {
+    $exportextcode = array('csv', 'xls', 'pdf');
+    if (!is_numeric($exportcodeorext)) {
+        return array_search($exportcodeorext, $exportextcode);
+    } else if (is_numeric($exportcodeorext) && $exportcodeorext < count($exportextcode)) {
+        return $exportextcode[$exportcodeorext];
+    }
+    debug_error_log("get_attachment_export_format({$exportcodeorext}) - unsupportted value!");
+    return false;
+}
+
+/**
+ * Function to return file to save report link when over attachment limit.
+ * @param int $schedid  the report schedule id
+ * @param string $ext the file extension, i.e. 'csv', 'pdf'
+ * @param string $linkreturn the returned link value to store for attachment reference.
+ * @return string|null the fullpath & filename to store link as, null on error.
+ */
+function get_new_report_attachment_link($schedid, $ext, &$linkreturn) {
+    if (($dir = get_report_attachment_dir()) === false) {
+        return null;
+    }
+    do {
+        $linkreturn = random_string(32);
+        $filename = get_report_attachment_filename($schedid, $ext, $linkreturn);
+    } while (file_exists($dir.$filename));
+    return $dir.$filename;
+}
+
+/**
+ * Function to return file attachment from link.
+ * @param int $schedid  the report schedule id
+ * @param string $ext the file extension, i.e. 'csv', 'pdf'
+ * @param string $link the link value for attachment reference.
+ * @return string|null the fullpath & filename, null if not found.
+ */
+function get_existing_report_attachment($schedid, $ext, $link) {
+    if (($dir = get_report_attachment_dir()) === false) {
+        return null;
+    }
+    $filename = get_report_attachment_filename($schedid, $ext, $link);
+    if (!file_exists($dir.$filename)) {
+        return null;
+    }
+    return $dir.$filename;
+}
+
+/**
+ * Function to save a report attachment and return link.
+ * @param int $schedid the report schedule id
+ * @param string &$attachname the file attachment name, maybe updated!
+ * @param $reportfile the file on disk with report.
+ * @return string|null the url, null if error.
+ */
+function save_report_attachment($schedid, &$attachname, $reportfile) {
+    global $DB;
+    // Check for any old attachments to delete
+    $select = 'scheduleid = ? AND downloads > ? AND timecreated < ?';
+    $todelete = $DB->get_recordset_select('local_elisreports_links', $select, array($schedid, 0, time() - (30 * DAYSECS)));
+    if ($todelete && $todelete->valid()) {
+        foreach ($todelete as $todel) {
+            $delext = get_attachment_export_format($todel->exportformat);
+            $linkdata = unserialize($todel->link);
+            $link = $linkdata['link'];
+            $filename = get_existing_report_attachment($schedid, $delext, $link);
+            if (!empty($filename)) {
+                @unlink($filename);
+            }
+            $DB->delete_records('local_elisreports_links', array('id' => $todel->id));
+        }
+    }
+    if (($extpos = strrpos($attachname, '.')) === false) {
+        return null;
+    }
+    $ext = substr($attachname, $extpos + 1);
+    if ($ext == 'excel') {
+        $ext = 'xls';
+        $attachname = str_replace('.excel', '.xls', $attachname);
+    }
+    if (($extcode = get_attachment_export_format($ext)) === false) {
+        return null;
+    }
+    $link = '';
+    $filename = get_new_report_attachment_link($schedid, $ext, $link);
+    if (empty($filename)) {
+        // debug_error_log("save_report_attachment({$schedid}, {$attachname}, {$reportfile}) failed to get_new_report_attachment_link!");
+        return null;
+    }
+    if (@rename($reportfile, $filename) === false) {
+        return null;
+    }
+    $rec = new stdClass;
+    $rec->scheduleid = $schedid;
+    $rec->link = serialize(array(
+        'link' => $link,
+        'name' => $attachname));
+    $rec->exportformat = $extcode;
+    $rec->timecreated = time();
+    $DB->insert_record('local_elisreports_links', $rec);
+    return new moodle_url('/local/elisreports/report_attachment.php', array(
+        'id' => $schedid,
+        'link' => $link,
+        'ext' => $extcode));
+}

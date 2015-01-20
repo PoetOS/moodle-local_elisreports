@@ -429,7 +429,7 @@ class scheduling_form_step_format extends moodleform {
             }
         }
 
-        $mform->addGroup($radioarray, 'format', get_string('format'), '', false);
+        $mform->addGroup($radioarray, 'format', get_string('format'), '<br/>', false);
         $mform->addRule('format', get_string('required_field', 'local_elisreports', get_string('format')), 'required', null, 'client');
         $mform->setDefault('format', 'csv');
 

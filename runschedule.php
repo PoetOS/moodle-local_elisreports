@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2015 Remote Learner.net Inc http://www.remote-learner.net
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  *
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  (C) 2008-2015 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
@@ -58,8 +58,9 @@ function php_report_schedule_export_instance($report_schedule, $now = 0) {
     $result = php_report::export_default_instance($shortname, $format, $filename, $parameterdata, $report_schedule->userid, php_report::EXECUTION_MODE_SCHEDULED);
 
     if (!$result) {
-        //handle failure case
-        unlink($filename);
+        // Handle failure case.
+        // error_log("php_report_schedule_export_instance(): call to php_report::export_default_instance() failed!");
+        @unlink($filename);
         return false;
     }
 
@@ -72,6 +73,19 @@ function php_report_schedule_export_instance($report_schedule, $now = 0) {
     $start = strlen($CFG->dataroot);
     $attachment = substr($filename,$start);
     $attachname = $report_schedule->report.$now.'.'.$data['format'];
+    if (isset($data['attachlimit']) && filesize($filename) > (int)($data['attachlimit'] * 1024 * 1024)) {
+        $linkurl = save_report_attachment($report_schedule->id, $attachname, $filename);
+        if (empty($linkurl)) {
+            // error_log("php_report_schedule_export_instance(): call to save_report_attachment() failed!");
+            @unlink($filename);
+            return false;
+        }
+        $messagetext .= "\n".get_string('attachment_link', 'local_elisreports').$linkurl;
+        $messagehtml .= "\n".html_writer::tag('p', get_string('attachment_link', 'local_elisreports').html_writer::empty_tag('br').
+                html_writer::tag('a', $attachname, array('href' => $linkurl)));
+        $attachment = '';
+        $attachname = '';
+    }
 
     // $user->id & all other fields now required by Moodle 2.6+ email_to_user() API which also calls fullname($user)
     $user = new stdClass;
@@ -87,10 +101,10 @@ function php_report_schedule_export_instance($report_schedule, $now = 0) {
         $user->email = trim($recipient);
         email_to_user($user, $from, $subject, $messagetext, $messagehtml, $attachment, $attachname);
     }
-
-    // Remove the file that was created for this report
-    unlink($filename);
-
+    if (!empty($attachment)) {
+        // Remove the file that was created for this report
+        @unlink($filename);
+    }
     return true;
 }
 

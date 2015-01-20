@@ -3,6 +3,9 @@
 $string['attachlimit'] = 'Max. Email Attachment Size';
 $string['attachlimit_alwayslink'] = 'Always send only link.';
 $string['attachlimit_disable'] = 'Attachment size unlimited';
+$string['attachment_link'] = 'Report is over attachment limit.
+ You can retrieve your scheduled report by following this link:
+ ';
 $string['button_cancel'] = 'Cancel';
 $string['button_reset_form'] = 'Reset Form';
 $string['button_save_defaults'] = 'Save Values as Defaults';
@@ -136,7 +139,8 @@ $string['parameters'] = 'Parameters';
 
 $string['format_description'] = '4: Set the report format';
 $string['pdf'] = 'PDF';
-$string['csv'] = 'Excel (CSV)';
+$string['csv'] = 'CSV';
+$string['excel'] = 'Excel';
 
 $string['recipients_description'] = '5: Set who to send the report to';
 $string['email_instructions'] = 'Enter email addresses separated by commas';
