@@ -6,6 +6,7 @@ $string['attachlimit_disable'] = 'Attachment size unlimited';
 $string['attachment_link'] = 'Report is over attachment limit.
  You can retrieve your scheduled report by following this link:
  ';
+$string['attachmentnotfound'] = 'Report attachment not found.';
 $string['button_cancel'] = 'Cancel';
 $string['button_reset_form'] = 'Reset Form';
 $string['button_save_defaults'] = 'Save Values as Defaults';
