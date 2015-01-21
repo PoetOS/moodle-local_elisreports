@@ -244,6 +244,22 @@ function local_elisreports_delete_schedule_instance($id) {
         $DB->delete_records('local_eliscore_sched_tasks', array('taskname' => $taskname));
         //delete the task itself
         $DB->delete_records('local_elisreports_schedule', array('id' => $id));
+
+        // Delete all report attachments.
+        $attachments = $DB->get_recordset('local_elisreports_links', array('scheduleid' => $id));
+        if ($attachments && $attachments->valid()) {
+            foreach ($attachments as $attachment) {
+                $delext = get_attachment_export_format($attachment->exportformat);
+                $linkdata = unserialize($attachment->link);
+                $link = $linkdata['link'];
+                $filename = get_existing_report_attachment($id, $delext, $link);
+                if (!empty($filename)) {
+                    @unlink($filename);
+                }
+            }
+            $attachments->close();
+        }
+        $DB->delete_records('local_elisreports_links', array('scheduleid' => $id));
         return true;
     }
 
@@ -466,8 +482,8 @@ function get_existing_report_attachment($schedid, $ext, $link) {
 function save_report_attachment($schedid, &$attachname, $reportfile) {
     global $DB;
     // Check for any old attachments to delete
-    $select = 'scheduleid = ? AND downloads > ? AND timecreated < ?';
-    $todelete = $DB->get_recordset_select('local_elisreports_links', $select, array($schedid, 0, time() - (30 * DAYSECS)));
+    $select = 'scheduleid = ? AND (timecreated < ? OR (downloads > ? AND timecreated < ?))';
+    $todelete = $DB->get_recordset_select('local_elisreports_links', $select, array($schedid, time() - (90 * DAYSECS), 0, time() - (30 * DAYSECS)));
     if ($todelete && $todelete->valid()) {
         foreach ($todelete as $todel) {
             $delext = get_attachment_export_format($todel->exportformat);

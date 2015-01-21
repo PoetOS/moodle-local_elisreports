@@ -816,6 +816,49 @@ class scheduling_page extends workflowpage {
     }
 
     /**
+     * Display method to confirm deleting jobs
+     */
+    public function display_confirmdelete() {
+        global $DB, $OUTPUT;
+        if ($data = data_submitted()) {
+            $unretrieved = false;
+            echo $OUTPUT->heading(get_string('confirmjobsdelete_title', 'local_elisreports'));
+            $table = new html_table();
+            $table->head = array(
+                    get_string('listinstancejobs_header_label', 'local_elisreports'),
+                    get_string('listinstancejobs_attachments', 'local_elisreports')
+            );
+            $table->data = array();
+            foreach ($data as $key => $value) {
+                if (strpos($key, 'schedule_') === 0) {
+                    $scheduleid = (int)substr($key, strlen('schedule_'));
+                    if (($rec = $DB->get_record('local_elisreports_schedule', array('id' => $scheduleid)))) {
+                        $config = unserialize($rec->config);
+                        $attachmentarray = array();
+                        $attachments = $DB->get_recordset_select('local_elisreports_links', 'scheduleid = ? AND downloads < ?', array($scheduleid, 1));
+                        if ($attachments && $attachments->valid()) {
+                            $unretrieved = true;
+                            foreach ($attachments as $attachment) {
+                                $linkdata = unserialize($attachment->link);
+                                $attachmentarray[] = $linkdata['name'];
+                            }
+                            $attachments->close();
+                        }
+                        $table->data[] = array($config['label'], implode('<br/>', $attachmentarray));
+                    }
+                }
+            }
+            $report = $this->required_param('report', PARAM_ALPHAEXT);
+            echo html_writer::table($table);
+            $cancelled = new scheduling_page(array('report' => $report, 'action' => 'listinstancejobs'));
+            $params = array_merge($_POST, array('report' => $report, 'action' => 'deletejobs'));
+            $confirmed = new scheduling_page($params);
+            echo $OUTPUT->confirm(get_string($unretrieved ? 'confirmjobsdelete_unretrieved' : 'confirmjobsdelete', 'local_elisreports'),
+                    new single_button($confirmed->url, get_string('delete'), 'post'), $cancelled->url);
+        }
+    }
+
+    /**
      * Mainline for deleting jobs from the "listinstancejobs" view
      * (i.e. view of all scheduled jobs for a particular report)
      */
@@ -912,7 +955,7 @@ class scheduling_page extends workflowpage {
         //available actions
         $action_options = array('runjobs'    => get_string('listinstancejobs_action_runjobs',    'local_elisreports'),
                                 'copyjobs'   => get_string('listinstancejobs_action_copyjobs',   'local_elisreports'),
-                                'deletejobs' => get_string('listinstancejobs_action_deletejobs', 'local_elisreports'));
+                                'confirmdelete' => get_string('listinstancejobs_action_deletejobs', 'local_elisreports'));
         //render the dropdown, disabled if necessary
         echo html_writer::select($action_options, 'action', '', false, array('disabled' => $disabled));
 
