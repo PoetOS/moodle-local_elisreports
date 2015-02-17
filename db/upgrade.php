@@ -36,8 +36,11 @@ function xmldb_local_elisreports_upgrade($oldversion = 0) {
     $result = true;
 
     if ($result && $oldversion < 2015010401) {
-        // ELIS-9040: create new report attachment links table
-        $dbman->install_one_table_from_xmldb_file($CFG->dirroot.'/local/elisreports/db/install.xml', 'local_elisreports_links');
+        $table = new xmldb_table('local_elisreports_links');
+        if (!$dbman->table_exists($table)) {
+            // ELIS-9040: create new report attachment links table
+            $dbman->install_one_table_from_xmldb_file($CFG->dirroot.'/local/elisreports/db/install.xml', 'local_elisreports_links');
+        }
         upgrade_plugin_savepoint($result, '2015010401', 'local', 'elisreports');
     }
 
