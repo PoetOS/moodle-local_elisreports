@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2015 Remote Learner.net Inc http://www.remote-learner.net
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,22 +18,16 @@
  *
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  (C) 2008-2015 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
 require_once ($CFG->libdir.'/formslib.php');
 require_once ($CFG->dirroot.'/local/elisreports/sharedlib.php');
 require_once ($CFG->dirroot.'/local/elisreports/parameter_form.class.php');
+require_once ($CFG->dirroot.'/local/eliscore/lib/form/scheduling.php');
 require_once ($CFG->dirroot.'/local/eliscore/lib/form/timeselector.php');
-
-// Javascript files required to convert enter from form cancel to next step
-function require_js_files() {
-    global $PAGE;
-    $PAGE->requires->js('/lib/javascript-static.js'); // addonload()
-    $PAGE->requires->js('/local/elisreports/js/entertonext.js');
-}
 
 class scheduling_form_step_label extends moodleform {
     function definition() {
@@ -60,7 +54,7 @@ class scheduling_form_step_label extends moodleform {
 
         $mform->addElement('text', 'label', get_string('label', 'local_elisreports'));
         $mform->setType('label', PARAM_CLEAN);
-        $mform->addRule('label', get_string('required_field', 'local_elisreports', get_string('label', 'local_elisreports')), 'required', null, 'server');
+        $mform->addRule('label', get_string('required_field', 'local_eliscore', get_string('label', 'local_elisreports')), 'required', null, 'server');
         // ^ELIS-3316: server validation so cancel/submit will work
 
         $options=array('cols'=>'30');
@@ -68,208 +62,6 @@ class scheduling_form_step_label extends moodleform {
         $mform->setType('description', PARAM_TEXT);
 
         workflowpage::add_navigation_buttons($mform);
-    }
-
-    /**
-     * Set error message for a form element
-     *
-     * @param     string    $element    Name of form element to set error for
-     * @param     string    $message    Error message, if empty then removes the current error message
-     * @since     1.0
-     * @access    public
-     * @return    void
-     */
-    function setElementError($element, $message = null) {
-        $this->_form->setElementError($element, $message);
-    }
-}
-
-class scheduling_form_step_schedule extends moodleform {
-    function definition() {
-        global $PAGE;
-        require_js_files();
-        $mform =& $this->_form;
-
-        $page = $this->_customdata;
-        $workflow = $page->workflow;
-        // Get the workflow data for the timezone to keep the time_selector in line
-        $workflowdata = $workflow->unserialize_data(array());
-
-        $mform->addElement('html','');
-        // Add javascript function to toggle the simple/recurring calendar elements
-        // Also add a listener to show/hide the simple/calendar elements on page load
-        $mform->addElement('html', '<script type="text/javascript">
-            function switchCalendar() {
-                var showHide = document.getElementsByName("recurrencetype");
-                var simple = document.getElementById("id_simplerecurrencegroup");
-                var calendar = document.getElementById("id_calendarrecurrencegroup");
-                var simplestate = simple.className.indexOf("collapsed") >= 0 ? "collapsed" : "";
-                var calendarstate = calendar.className.indexOf("collapsed") >= 0 ? "collapsed" : "";
-                if (showHide["0"].checked) {
-                    if(showHide["0"].value == \'calendar\')
-                    {
-                        simple.className = "accesshide collapsible "+simplestate;
-                        calendar.className = "clearfix collapsible "+calendarstate;
-                    }
-                    else
-                    {
-                        simple.className = "clearfix collapsible "+simplestate;
-                        calendar.className = "accesshide collapsible "+calendarstate;
-                    }
-                }
-                else
-                    if(showHide["0"].value == \'simple\')
-                    {
-                        simple.className = "accesshide collapsible "+simplestate;
-                        calendar.className = "clearfix collapsible "+calendarstate;
-                    }
-                    else
-                    {
-                        simple.className = "clearfix collapsible "+simplestate;
-                        calendar.className = "accesshide collapsible "+calendarstate;
-                    }
-            }
-        function initCalendar() {
-            YUI().use("yui2-event", function(Y) {
-                var YAHOO = Y.YUI2;
-                YAHOO.util.Event.onDOMReady(switchCalendar());
-            });
-        }
-        YUI().use("yui2-event", function(Y) {
-            var YAHOO = Y.YUI2;
-            YAHOO.util.Event.onDOMReady(initCalendar);
-        });
-        </script>');
-
-        $mform->addElement('hidden', '_wfid', $workflow->id);
-        $mform->setType('_wfid', PARAM_INT);
-
-        $mform->addElement('hidden', '_step', scheduling_workflow::STEP_SCHEDULE);
-        $mform->setType('_step', PARAM_TEXT);
-        $mform->addElement('hidden', 'action', 'save');
-        $mform->setType('action', PARAM_TEXT);
-
-        $mform->addElement('html', '<h2>'.htmlspecialchars(get_string('recurrence_description', 'local_elisreports')).'</h2>');
-
-        $choices = get_list_of_timezones();
-        $choices['99'] = get_string('serverlocaltime');
-        $mform->addElement('select', 'timezone', get_string('timezone'), $choices);
-        $mform->setDefault('timezone', 99);
-
-        $group = array();
-        $group[] = $mform->createElement('radio', 'starttype', '', get_string('now', 'local_elisreports'), 0);
-        // Add onclick action to toggle the calendar
-        $mform->_attributes['onclick'] = 'switchCalendar();';
-        $group[] = $mform->createElement('radio', 'starttype', '', get_string('time_on', 'local_elisreports'), 1);
-        // Add onclick action to toggle the calendar
-        $mform->_attributes['onclick'] = 'switchCalendar();';
-        //Set date options: timezone = 0 so it doesn't adjust the time ...
-        $date_options = array('timezone' => 0, 'optional' => false, 'startyear' => userdate(time(), '%Y', -13, false), 'stopyear' => 2038, 'applydst' => false);
-        $group[] = $mform->createElement('date_selector', 'startdate', '', $date_options);
-        $mform->addGroup($group, 'starttype', get_string('start', 'local_elisreports'), '', false);
-        $mform->setDefault('starttype', 0);
-        $mform->addRule('starttype', get_string('required_field', 'local_elisreports', get_string('start', 'local_elisreports')), 'required', null, 'client');
-        $mform->disabledIf('startdate', 'starttype', 'neq', 1);
-        $mform->disabledIf('startdate[day]', 'starttype', 'neq', 1);
-        $mform->disabledIf('startdate[month]', 'starttype', 'neq', 1);
-        $mform->disabledIf('startdate[year]', 'starttype', 'neq', 1);
-
-        $group = array();
-        $group[] = $mform->createElement('radio', 'recurrencetype', '', get_string('simple_recurrence', 'local_elisreports'), scheduling_workflow::RECURRENCE_SIMPLE);
-        $group[] = $mform->createElement('radio', 'recurrencetype', '', get_string('calendar_recurrence', 'local_elisreports'), scheduling_workflow::RECURRENCE_CALENDAR);
-        $mform->addGroup($group, 'recurrencetype', get_string('recurrence', 'local_elisreports'), '', false);
-        $mform->setDefault('recurrencetype', scheduling_workflow::RECURRENCE_SIMPLE);
-        $mform->addRule('recurrencetype', get_string('required_field', 'local_elisreports', get_string('recurrence', 'local_elisreports')), 'required', null, 'client');
-
-        $mform->addElement('header', 'simplerecurrencegroup', get_string('simple_recurrence_settings', 'local_elisreports'));
-        $group = array();
-        $group[] = $mform->createElement('radio', 'runtype', '', get_string('indefinitely', 'local_elisreports'), 0);
-        $group[] = $mform->createElement('static', '', '', '<br />');
-        $group[] = $mform->createElement('radio', 'runtype', '', get_string('until', 'local_elisreports'), 1);
-        $group[] = $mform->createElement('date_selector', 'enddate', '', $date_options);
-        $group[] = $mform->createElement('static', '', '', '<br />');
-        $group[] = $mform->createElement('radio', 'runtype', '', '', 2);
-        $group[] = $mform->createElement('text', 'runsremaining', '', array('size' => 2));
-        $group[] = $mform->createElement('static', '', '', get_string('times', 'local_elisreports'));
-        $group[] = $mform->createElement('static', '', '', '<br />&nbsp;&nbsp;&nbsp;&nbsp;'.get_string('every', 'local_elisreports'));
-        $group[] = $mform->createElement('text', 'frequency', '', array('size' => 2));
-        $options = array(
-            scheduling_workflow::FREQ_HOUR  => get_string('freq_hours', 'local_elisreports'),
-            scheduling_workflow::FREQ_DAY   => get_string('freq_days', 'local_elisreports'),
-            scheduling_workflow::FREQ_MONTH => get_string('freq_months', 'local_elisreports'),
-        );
-        $group[] = $mform->createElement('select', 'frequencytype', '', $options);
-        $mform->addGroup($group, 'runtype', get_string('runtype', 'local_elisreports'), '', false);
-        $mform->disabledIf('enddate', 'runtype', 'neq', 1);
-        $mform->disabledIf('enddate[day]', 'runtype', 'neq', 1);
-        $mform->disabledIf('enddate[month]', 'runtype', 'neq', 1);
-        $mform->disabledIf('enddate[year]', 'runtype', 'neq', 1);
-        $mform->disabledIf('runsremaining', 'runtype', 'neq', 2);
-        $mform->setType('runsremaining', PARAM_INT);
-        $mform->setDefault('runsremaining', 1);
-        $mform->disabledIf('frequency', 'runtype', 'neq', 2);
-        $mform->disabledIf('frequencytype', 'runtype', 'neq', 2);
-        $mform->setType('frequency', PARAM_INT);
-        $mform->setDefault('frequency', 1);
-        $mform->setDefault('frequencytype', scheduling_workflow::FREQ_DAY);
-
-        $mform->addElement('header', 'calendarrecurrencegroup', get_string('calendar_recurrence_settings', 'local_elisreports'));
-        $mform->addElement('date_selector', 'calenddate', get_string('enddate', 'local_elisreports'), array('optional' => true, 'timezone' => 0, 'applydst' => false));
-
-        //Set timezone so it doesn't adjust the time
-        $tsoptions = array('timezone' => '0', 'year' => 1971,
-                           'applydst' => false);
-        $mform->addElement('time_selector', 'time', get_string('time'), $tsoptions);
-
-        $group = array();
-        $group[] = $mform->createElement('radio', 'caldaystype', '', get_string('everyday', 'local_elisreports'), 0);
-        $group[] = $mform->createElement('static', '', '', '<br />');
-        $group[] = $mform->createElement('radio', 'caldaystype', '', get_string('weekdays', 'local_elisreports'), 1);
-        $group[] = $mform->createElement('static', '', '', '<br />&nbsp;&nbsp;&nbsp;&nbsp;');
-        $group[] = $mform->createElement('checkbox', 'dayofweek[1]', '', get_string('mon', 'calendar'));
-        $group[] = $mform->createElement('checkbox', 'dayofweek[2]', '', get_string('tue', 'calendar'));
-        $group[] = $mform->createElement('checkbox', 'dayofweek[3]', '', get_string('wed', 'calendar'));
-        $group[] = $mform->createElement('checkbox', 'dayofweek[4]', '', get_string('thu', 'calendar'));
-        $group[] = $mform->createElement('checkbox', 'dayofweek[5]', '', get_string('fri', 'calendar'));
-        $group[] = $mform->createElement('checkbox', 'dayofweek[6]', '', get_string('sat', 'calendar'));
-        $group[] = $mform->createElement('checkbox', 'dayofweek[7]', '', get_string('sun', 'calendar'));
-        $group[] = $mform->createElement('static', '', '', '<br />');
-        $group[] = $mform->createElement('radio', 'caldaystype', '', get_string('monthdays', 'local_elisreports'), 2);
-        $group[] = $mform->createElement('text', 'monthdays', '', array('size' => 6));
-
-        $mform->addGroup($group, 'daytype', get_string('days', 'local_elisreports'), '', false);
-        $mform->disabledIf('dayofweek[1]', 'caldaystype', 'neq', 1);
-        $mform->disabledIf('dayofweek[2]', 'caldaystype', 'neq', 1);
-        $mform->disabledIf('dayofweek[3]', 'caldaystype', 'neq', 1);
-        $mform->disabledIf('dayofweek[4]', 'caldaystype', 'neq', 1);
-        $mform->disabledIf('dayofweek[5]', 'caldaystype', 'neq', 1);
-        $mform->disabledIf('dayofweek[6]', 'caldaystype', 'neq', 1);
-        $mform->disabledIf('dayofweek[7]', 'caldaystype', 'neq', 1);
-        $mform->disabledIf('monthdays', 'caldaystype', 'neq', 2);
-        $mform->setType('monthdays', PARAM_TEXT);
-
-        $group = array();
-        $group[] = $mform->createElement('advcheckbox', 'allmonths', '', get_string('all'), 1);
-        $group[] = $mform->createElement('static', '', '', '<br />');
-        $group[] = $mform->createElement('checkbox', 'month[1]', '', strftime('%b', mktime(0, 0, 0, 1, 1)));
-        $group[] = $mform->createElement('checkbox', 'month[2]', '', strftime('%b', mktime(0, 0, 0, 2, 1)));
-        $group[] = $mform->createElement('checkbox', 'month[3]', '', strftime('%b', mktime(0, 0, 0, 3, 1)));
-        $group[] = $mform->createElement('checkbox', 'month[4]', '', strftime('%b', mktime(0, 0, 0, 4, 1)));
-        $group[] = $mform->createElement('checkbox', 'month[5]', '', strftime('%b', mktime(0, 0, 0, 5, 1)));
-        $group[] = $mform->createElement('checkbox', 'month[6]', '', strftime('%b', mktime(0, 0, 0, 6, 1)));
-        $group[] = $mform->createElement('static', '', '', '<br />');
-        $group[] = $mform->createElement('checkbox', 'month[7]', '', strftime('%b', mktime(0, 0, 0, 7, 1)));
-        $group[] = $mform->createElement('checkbox', 'month[8]', '', strftime('%b', mktime(0, 0, 0, 8, 1)));
-        $group[] = $mform->createElement('checkbox', 'month[9]', '', strftime('%b', mktime(0, 0, 0, 9, 1)));
-        $group[] = $mform->createElement('checkbox', 'month[10]', '', strftime('%b', mktime(0, 0, 0, 10, 1)));
-        $group[] = $mform->createElement('checkbox', 'month[11]', '', strftime('%b', mktime(0, 0, 0, 11, 1)));
-        $group[] = $mform->createElement('checkbox', 'month[12]', '', strftime('%b', mktime(0, 0, 0, 12, 1)));
-        $mform->addGroup($group, 'month', get_string('months', 'local_elisreports'), '', false);
-        for ($i = 1; $i <= 12; ++$i) {
-            $mform->disabledIf("month[{$i}]", 'allmonths', 'checked');
-        }
-
-        workflowpage::add_navigation_buttons($mform, scheduling_workflow::STEP_LABEL);
     }
 
     /**
@@ -430,7 +222,7 @@ class scheduling_form_step_format extends moodleform {
         }
 
         $mform->addGroup($radioarray, 'format', get_string('format'), '<br/>', false);
-        $mform->addRule('format', get_string('required_field', 'local_elisreports', get_string('format')), 'required', null, 'client');
+        $mform->addRule('format', get_string('required_field', 'local_eliscore', get_string('format')), 'required', null, 'client');
         $mform->setDefault('format', 'csv');
 
         workflowpage::add_navigation_buttons($mform, scheduling_workflow::STEP_PARAMETERS);
@@ -470,7 +262,7 @@ class scheduling_form_step_recipients extends moodleform {
 
         $mform->addElement('text', 'recipients', get_string('recipientslist'), array('size' => 60));
         $mform->setType('recipients', PARAM_TEXT);
-        $mform->addRule('recipients', get_string('required_field', 'local_elisreports', get_string('recipientslist')), 'required', null, 'server');
+        $mform->addRule('recipients', get_string('required_field', 'local_eliscore', get_string('recipientslist')), 'required', null, 'server');
         // ^ELIS-3316: server validation so cancel/submit will work
 
         $mform->addElement('htmleditor', 'message', '<div class="php_report_bold_header">'.htmlspecialchars(get_string('message', 'local_elisreports')).'</div>');
@@ -542,9 +334,9 @@ class scheduling_form_step_confirm extends moodleform {
 
         debug_error_log("/local/elisreports/form/scheduling.php::scheduling_form_step_confirm::definition() enddate = {$data['schedule']['enddate']}, timezone = {$tz} ({$timezone})");
         // Set up for simple recurrence
-        if ($data['recurrencetype'] == scheduling_workflow::RECURRENCE_SIMPLE) {
+        if ($data['recurrencetype'] == elisschedulingworkflowtrait::$RECURRENCE_SIMPLE) {
             if ($data['schedule']['runsremaining'] == '' && $data['schedule']['enddate'] == '') {
-                $schedule_string = get_string('indefinitely', 'local_elisreports');
+                $schedule_string = get_string('indefinitely', 'local_eliscore');
             } elseif ($data['schedule']['enddate'] != ''){
                 $enddate = userdate($data['schedule']['enddate'] + DAYSECS - 1, '', $tz);
                 // 2nd param to userdate() was: get_string('strftimedaydate')
@@ -594,7 +386,7 @@ class scheduling_form_step_confirm extends moodleform {
             } else {
                 //Specific days of the month
                 $days_string = strrev(preg_replace('/,/',strrev(get_string('and','local_elisreports')),strrev($data['schedule']['day']), $once));
-                $schedule_string .= get_string('month_days', 'local_elisreports',$days_string);
+                $schedule_string .= get_string('month_days', 'local_eliscore', $days_string);
 
             }
             // months
@@ -749,9 +541,9 @@ class scheduling_form_step_confirm extends moodleform {
         $mform->addElement('static', 'label', get_string('label', 'local_elisreports').':', htmlspecialchars($data['label']));
         $mform->addElement('static', 'description', get_string('description').':', htmlspecialchars($data['description']));
         $mform->addElement('static', 'timezone', get_string('timezone').':', $timezone);
-        $mform->addElement('static', 'startdate', get_string('startdate', 'local_elisreports').':', userdate($data['startdate'],get_string('strftimedaydate'), $tz));
-        $mform->addElement('static', 'enddate', get_string('enddate', 'local_elisreports').':', $enddate);
-        $mform->addElement('static', 'recurrencetype', get_string('recurrencetype', 'local_elisreports').':', htmlspecialchars($data['recurrencetype']));
+        $mform->addElement('static', 'startdate', get_string('startdate', 'local_eliscore').':', userdate($data['startdate'],get_string('strftimedaydate'), $tz));
+        $mform->addElement('static', 'enddate', get_string('enddate', 'local_eliscore').':', $enddate);
+        $mform->addElement('static', 'recurrencetype', get_string('recurrencetype', 'local_eliscore').':', htmlspecialchars($data['recurrencetype']));
         $mform->addElement('static', 'schedule', get_string('schedule').':', $schedule_string);
         $mform->addElement('static', 'parameters', get_string('parameters', 'local_elisreports').':', $param_string);
         $mform->addElement('static', 'format', get_string('format').':', get_string($data['format'], 'local_elisreports'));

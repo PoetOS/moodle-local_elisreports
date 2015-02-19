@@ -334,68 +334,6 @@ function local_elisreports_get_names_by_category($require_exportable = false, $u
 }
 
 /**
- * This function adjusts a GMT timestamp to timezone
- * @param $timestamp
- * @param $timezone
- * @param mixed $dstdate default null uses $timestamp (param1) for dst calc
- *              false disables dst offset,
- *              otherwise dstdate value used in place of timestamp for dst calc
- * @return int  timestamp (secs since epoch) in timezone
- */
-function from_gmt($timestamp, $timezone = 99, $dstdate = null) {
-    $tz = get_user_timezone_offset($timezone);
-    $ts = (abs($tz) > 13) ? $timestamp : ($timestamp + ($tz * HOURSECS));
-    if ($dstdate === null) {
-        $dstdate = $timestamp;
-    }
-    $dstoffset = null;
-    if (!empty($dstdate) && ($timezone == 99 || !is_numeric($timezone))) {
-        $dstdate = (abs($tz) > 13) ? $dstdate : ($dstdate + ($tz * HOURSECS));
-        $strtimezone = is_numeric($timezone) ? NULL : $timezone;
-        $dstoffset = dst_offset_on($dstdate, $strtimezone);
-        $ts += $dstoffset; // TBD or -= see: to_gmt()
-    }
-    //debug_error_log("/local/elisreports/shardlib.php::from_gmt({$timestamp}, {$timezone}): tz = {$tz} dstdate = {$dstdate} dstoffset = {$dstoffset} => {$ts}");
-    return $ts;
-}
-
-/**
- * This function converts a timestamp in timezone to GMT (UTC)
- * @param $timestamp
- * @param $timezone
- * @param mixed $dstdate default null uses $timestamp (param1) for dst calc
- *              false disables dst offset,
- *              otherwise dstdate value used in place of timestamp for dst calc
- * @return int  adjusted timestamp (secs since epoch)
- */
-function to_gmt($timestamp, $timezone = 99, $dstdate = null) {
-    if ($dstdate == null) {
-        $dstdate = $timestamp;
-    }
-    $ts = $timestamp;
-    $dstoffset = null;
-    if (!empty($dstdate) && ($timezone == 99 || !is_numeric($timezone))) {
-        $strtimezone = is_numeric($timezone) ? NULL : $timezone;
-        $dstoffset = dst_offset_on($dstdate, $strtimezone);
-        $ts -= $dstoffset; // or += see to_gmt()
-    }
-    $tz = get_user_timezone_offset($timezone);
-    $ts = (abs($tz) > 13) ? $ts : ($ts - ($tz * HOURSECS));
-    //debug_error_log("/local/elisreports/sharedlib.php::to_gmt({$timestamp}, {$timezone}): tz = {$tz} dstdate = {$dstdate} dstoffset = {$dstoffset} => $ts");
-    return $ts;
-}
-
-/**
- * Function to check debug level for DEBUG_DEVELOPER
- * and output string to web server error log file.
- */
-function debug_error_log($str) {
-    if (debugging('', DEBUG_DEVELOPER)) {
-        error_log($str);
-    }
-}
-
-/**
  * Function to create & return directory to save report link when over attachment limit.
  * @return string|bool the directory in moodledata to store link files, false on error.
  */
