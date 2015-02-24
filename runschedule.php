@@ -253,9 +253,6 @@ function run_schedule($taskname) {
     //decrement the number of remaining runs, if applicable
     php_report_schedule_decrement_remaining_runs($report_schedule);
 
-    //set the next run time in the database if appropriate
-    php_report_schedule_set_next_runtime($taskname, $report_schedule);
-
     //cleanup
     php_report_schedule_delete_unmatching_records();
 

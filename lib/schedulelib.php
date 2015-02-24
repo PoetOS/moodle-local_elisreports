@@ -256,7 +256,7 @@ class scheduling_workflow extends workflow {
         $taskname     = 'scheduled_'.$schedule->id;
         $component    = 'local_elisreports';
         $callfile     = '/local/elisreports/runschedule.php';
-        $callfunction = serialize('run_schedule');
+        $callfunction = 'run_schedule';
         $this->save_elis_scheduled_task($taskname, $component, $callfile, $callfunction, $data);
     }
 }
