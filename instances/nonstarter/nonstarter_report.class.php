@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2013 Remote-Learner.net Inc (http://www.remote-learner.net)
+ * Copyright (C) 2008-2015 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @copyright  (C) 2008-2013 Remote Learner.net Inc http://www.remote-learner.net
+ * @copyright  (C) 2008-2015 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
@@ -422,20 +422,21 @@ class nonstarter_report extends table_report {
       */
 
         $sql .= ' LEFT JOIN {'.classmoodlecourse::TABLE.'} clsm ON cls.id = clsm.classid
-           JOIN {'.student::TABLE."} clsenr ON clsenr.classid = cls.id
-            AND clsenr.completestatusid = {$stustatus}
-           JOIN {".user::TABLE.'} crlmusr ON clsenr.userid = crlmusr.id
-           JOIN {user} u ON u.idnumber = crlmusr.idnumber
-            AND NOT EXISTS
-               (SELECT * FROM {'.student_grade::TABLE.'} ccg
-                  JOIN {'.coursecompletion::TABLE.'} ccc ON ccc.id = ccg.completionid
-                   AND ccg.grade >= ccc.completion_grade
-                 WHERE ccg.userid = crlmusr.id AND ccg.classid = cls.id AND ccg.locked = 1 ';
+                            AND clsm.moodlecourseid > 0
+                       JOIN {'.student::TABLE."} clsenr ON clsenr.classid = cls.id
+                            AND clsenr.completestatusid = {$stustatus}
+                       JOIN {".user::TABLE.'} crlmusr ON clsenr.userid = crlmusr.id
+                       JOIN {user} u ON u.idnumber = crlmusr.idnumber
+                            AND NOT EXISTS (SELECT *
+                                              FROM {'.student_grade::TABLE.'} ccg
+                                              JOIN {'.coursecompletion::TABLE.'} ccc ON ccc.id = ccg.completionid
+                                                   AND ccg.grade >= ccc.completion_grade
+                                             WHERE ccg.userid = crlmusr.id AND ccg.classid = cls.id AND ccg.locked = 1 ';
         if (!empty($this->startdate)) {
-            $sql .= "AND ccg.timegraded >= {$this->startdate} ";
+            $sql .= " AND ccg.timegraded >= {$this->startdate} ";
         }
         if (!empty($this->enddate)) {
-            $sql .= "AND ccg.timegraded <= {$this->enddate} ";
+            $sql .= " AND ccg.timegraded <= {$this->enddate} ";
         }
         $sql .= ")";
 

@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2015 Remote Learner.net Inc http://www.remote-learner.net
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  *
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  (C) 2008-2015 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
@@ -675,24 +675,15 @@ class individual_course_progress_report extends table_report {
         }
 
         //main query
-        $sql = "SELECT {$columns}, crs.id AS courseid,
-                       cls.starttimehour AS starttimehour,
-                       cls.starttimeminute AS starttimeminute,
-                       cls.endtimehour AS endtimehour,
-                       cls.endtimeminute AS endtimeminute,
-                       cls.id AS classid,
-                       crlmuser.id AS userid, crlmuser.firstname, crlmuser.lastname
-                 FROM {". pmclass::TABLE .'} cls
-                 JOIN {'. student::TABLE .'} enrol
-                   ON enrol.classid = cls.id
-                 JOIN {'. user::TABLE .'} crlmuser
-                   ON crlmuser.id = enrol.userid
-                 JOIN {user} user
-                   ON user.idnumber = crlmuser.idnumber
-            LEFT JOIN {'. classmoodlecourse::TABLE .'} clsmdl
-                   ON clsmdl.classid = cls.id
-            LEFT JOIN {'. course::TABLE .'} crs
-                   ON crs.id = cls.courseid ';
+        $sql = "SELECT {$columns}, crs.id AS courseid, cls.starttimehour AS starttimehour, cls.starttimeminute AS starttimeminute, cls.endtimehour AS endtimehour,
+                       cls.endtimeminute AS endtimeminute, cls.id AS classid, crlmuser.id AS userid, crlmuser.firstname, crlmuser.lastname
+                  FROM {".pmclass::TABLE.'} cls
+                  JOIN {'.student::TABLE.'} enrol ON enrol.classid = cls.id
+                  JOIN {'.user::TABLE.'} crlmuser ON crlmuser.id = enrol.userid
+                  JOIN {user} user ON user.idnumber = crlmuser.idnumber
+             LEFT JOIN {'.classmoodlecourse::TABLE.'} clsmdl ON clsmdl.classid = cls.id
+                       AND clsmdl.moodlecourseid > 0
+             LEFT JOIN {'.course::TABLE.'} crs ON crs.id = cls.courseid ';
 
         if ($this->preposttest_columns) {
             $sql .= "

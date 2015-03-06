@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2015 Remote Learner.net Inc http://www.remote-learner.net
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @copyright  (C) 2008-2015 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
@@ -318,34 +318,24 @@ class course_completion_gas_gauge_report extends gas_gauge_table_report {
         if (stripos($columns, $lastname) === FALSE) {
             $columns .= ", {$lastname}";
         }
-        $sql = "SELECT {$columns}, COUNT(cc.id) AS numcompletionelements,
-                u.id AS cmuserid, gi.grademax, stu.grade AS elisgrade
-                FROM {". user::TABLE .'} u
-                JOIN {'. student::TABLE .'} stu
-                  ON u.id = stu.userid
-                JOIN {'. pmclass::TABLE .'} cls
-                  ON cls.id = stu.classid
-                JOIN {'. course::TABLE .'} crs
-                  ON cls.courseid = crs.id
-                LEFT JOIN {'. coursecompletion::TABLE .'} cc
-                  ON cc.courseid = crs.id
-                LEFT JOIN {'. student_grade::TABLE .'} ccg
-                  ON ccg.completionid = cc.id
-                  AND cls.id = ccg.classid
-                  AND stu.userid = ccg.userid
-                  AND ccg.locked = 1
-                LEFT JOIN {'. classmoodlecourse::TABLE ."} clsmdl
-                  ON cls.id = clsmdl.classid
-                LEFT JOIN {course} mdlcrs
-                  ON clsmdl.moodlecourseid = mdlcrs.id
-                LEFT JOIN {grade_items} gi
-                  ON mdlcrs.id = gi.courseid
-                  AND gi.itemtype = 'course'
-                LEFT JOIN {user} mdlu
-                  ON u.idnumber = mdlu.idnumber
-                LEFT JOIN {grade_grades} gg
-                  ON mdlu.id = gg.userid
-                  AND gi.id = gg.itemid
+        $sql = "SELECT {$columns}, COUNT(cc.id) AS numcompletionelements, u.id AS cmuserid, gi.grademax, stu.grade AS elisgrade
+                 FROM {".user::TABLE.'} u
+                 JOIN {'.student::TABLE.'} stu ON u.id = stu.userid
+                 JOIN {'.pmclass::TABLE.'} cls ON cls.id = stu.classid
+                 JOIN {'.course::TABLE.'} crs ON cls.courseid = crs.id
+            LEFT JOIN {'.coursecompletion::TABLE.'} cc ON cc.courseid = crs.id
+            LEFT JOIN {'.student_grade::TABLE.'} ccg ON ccg.completionid = cc.id
+                      AND cls.id = ccg.classid
+                      AND stu.userid = ccg.userid
+                      AND ccg.locked = 1
+            LEFT JOIN {'.classmoodlecourse::TABLE."} clsmdl ON cls.id = clsmdl.classid
+                      AND clsmdl.moodlecourseid > 0
+            LEFT JOIN {course} mdlcrs ON clsmdl.moodlecourseid = mdlcrs.id
+            LEFT JOIN {grade_items} gi ON mdlcrs.id = gi.courseid
+                      AND gi.itemtype = 'course'
+            LEFT JOIN {user} mdlu ON u.idnumber = mdlu.idnumber
+            LEFT JOIN {grade_grades} gg ON mdlu.id = gg.userid
+                      AND gi.id = gg.itemid
                 ";
 
         $params = array();
