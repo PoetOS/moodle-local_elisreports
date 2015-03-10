@@ -32,7 +32,7 @@ $id = required_param('id', PARAM_INT);
 $link = required_param('link', PARAM_CLEAN);
 $extcode = required_param('ext', PARAM_INT);
 $matches = array();
-if (!preg_match('[0-9a-zA-z]{32}', $link, $matches) || empty($matches[0]) || $link != $matches[0] ||
+if (!preg_match('/[0-9a-zA-z]{32}/', $link, $matches) || empty($matches[0]) || $link != $matches[0] ||
         ($ext = get_attachment_export_format($extcode)) == false ||
         ($filename = get_existing_report_attachment($id, $ext, $link)) == null ||
         !($recset = $DB->get_recordset_select('local_elisreports_links', 'scheduleid = ? AND '.$DB->sql_like('link', '?'), array($id, "%s:4:\"link\";s:32:\"{$link}\";%")))) {
