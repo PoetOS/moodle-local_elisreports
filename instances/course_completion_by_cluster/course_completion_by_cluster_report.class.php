@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2014 Remote-Learner.net Inc (http://www.remote-learner.net)
+ * Copyright (C) 2008-2015 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @copyright  (C) 2008-2014 Remote-Learner.net Inc (http://www.remote-learner.net)
+ * @copyright  (C) 2008-2015 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
@@ -40,20 +40,31 @@ require_once($CFG->dirroot .'/local/elisreports/type/table_report.class.php');
 function course_completion_check_custom_rule($element, $value, $extra) {
     $key = $extra[0];
     $values = $extra[1];
-    $set_ok = false;
 
     foreach ($values->_options['choices'] as $name => $choice) {
-        $item = $key .'_'. $name;
+        $item = $key.'_'.$name;
         if (optional_param($item, 0, PARAM_INT) == 1) {
-            $set_ok = true;
+            return true;
         }
     }
-    return $set_ok ? true : false;
+    return false;
 }
 
 class course_completion_by_cluster_report extends table_report {
 
+    /**
+     * @const string - main report grouping identifiers. (ELIS-9073)
+     */
+    const GROUPBYUSERNAME = 'username';
+    const GROUPBYCOURSE = 'course';
+    const GROUPBYCOMPDATE = 'compdate';
+    const GROUPBYUSERSET = 'userset';
+
+    /** @var array last_cluster_hierarchy */
     var $last_cluster_hierarchy = array();
+
+    /** @var array field_default default values for custom fields. */
+    protected $field_default = array();
 
     /**
      * Gets the report category.
@@ -105,12 +116,57 @@ class course_completion_by_cluster_report extends table_report {
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/curriculumstudent.class.php');
 
         //needed for options filters
-        require_once($CFG->dirroot .'/local/eliscore/lib/filtering/checkboxes.php');
-        require_once($CFG->dirroot .'/local/eliscore/lib/filtering/simpleselect.php');
-        require_once($CFG->dirroot .'/local/elisprogram/lib/filtering/clustertree.php');
+        require_once($CFG->dirroot.'/local/eliscore/lib/filtering/checkboxes.php');
+        require_once($CFG->dirroot.'/local/eliscore/lib/filtering/simpleselect.php');
+        require_once($CFG->dirroot.'/local/eliscore/lib/filtering/strtotime_daterange.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/filtering/clustertree.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/filtering/crssetcourseselect.php');
+        require_once($CFG->dirroot.'/local/elisprogram/lib/filtering/custom_field_multiselect_values.php');
 
         //make sure we have access to the context library
         require_once($CFG->dirroot .'/local/elisprogram/lib/contexts.php');
+
+    }
+
+    /**
+     * Specifies report headers that get displayed.
+     *
+     * @param string $exportformat The format being used to render the report
+     * @return array The list of header objects to display
+     */
+    public function get_header_entries($exportformat) {
+        static $headerelems = array('completiondaterange', 'strcompletiondaterange');
+        $filterparams = php_report_filtering_get_user_preferences($this->get_report_shortname());
+        if (empty($filterparams)) {
+            return array();
+        }
+        foreach ($filterparams as $key => $value) {
+            if (($reportend = strpos($key, '/')) !== false) {
+                $newkey = substr($key, $reportend + 1);
+                $filterparams[$newkey] = (!isset($_POST[$newkey]) && !isset($_GET[$newkey])) ? '' : $value;
+                unset($filterparams[$key]);
+            }
+        }
+        $headers = array();
+        foreach ($this->filter->_fields as $key => $filterdata) {
+            if (in_array($key, $headerelems)) {
+                if (empty($filterparams) || !($data = $filterdata->check_data((object)$filterparams))) {
+                    continue;
+                }
+                $filterlabel = $filterdata->get_label($data);
+                $filtervalue = '';
+                if (($delim = strpos($filterlabel, ':')) !== false) {
+                    $filtervalue = substr($filterlabel, $delim + 1);
+                    $filterlabel = substr($filterlabel, 0, $delim);
+                }
+                $headerobj = new stdClass;
+                $headerobj->label = $filterlabel;
+                $headerobj->value = $filtervalue;
+                $headerobj->css_identifier = '';
+                $headers[] = $headerobj;
+            }
+        }
+        return $headers;
     }
 
     /**
@@ -123,6 +179,7 @@ class course_completion_by_cluster_report extends table_report {
      * @return  array                The list of available filters
      */
     function get_filters($init_data = true) {
+        global $CFG, $PAGE;
 
         //cluster tree
         $enable_tree_label = get_string('enable_tree', 'rlreport_course_completion_by_cluster');
@@ -165,12 +222,14 @@ class course_completion_by_cluster_report extends table_report {
         $completion_label = get_string('column_option_completion', 'rlreport_course_completion_by_cluster');
         $heading_label = get_string('columns_options_heading', 'rlreport_course_completion_by_cluster');
         $coursesetlabel = get_string('column_option_courseset', 'rlreport_course_completion_by_cluster');
+        $courseidnumberlabel = get_string('column_option_courseidnumber', 'rlreport_course_completion_by_cluster');
 
         $choices = array(
-            'curriculum' => $curriculum_label,
-            'status'     => $status_label,
-            'completion' => $completion_label,
-            'courseset'  => $coursesetlabel
+            'curriculum'     => $curriculum_label,
+            'courseidnumber' => $courseidnumberlabel,
+            'status'         => $status_label,
+            'completion'     => $completion_label,
+            'courseset'      => $coursesetlabel
         );
 
         $checked = array('curriculum', 'status', 'completion');
@@ -210,9 +269,38 @@ class course_completion_by_cluster_report extends table_report {
         //completion checkboxes
         $completion_heading = get_string('completionstatus_options_heading',
                                          'rlreport_course_completion_by_cluster');
-        $completion_filter = new generalized_filter_entry('completionstatus', '', 'enrol.completestatusid',
+        $completion_filter = new generalized_filter_entry('completionstatus', 'enrol', 'completestatusid',
                                                           $completion_heading, false, 'checkboxes',
                                                           $completionstatus_options);
+
+        // Course completion date range filter.
+        $headinglabel = get_string('course_completion_date', 'rlreport_course_completion_by_cluster');
+        $options = array(
+            'help' => array('course_completion_date', get_string('course_completion_date', 'rlreport_course_completion_by_cluster'), 'rlreport_course_completion_by_cluster'),
+            'dateformat' => get_string('date_format', 'rlreport_course_completion_by_cluster')
+        );
+        $completiondatefilter = new generalized_filter_entry('completiondaterange', 'enrol', 'completetime', $headinglabel, false, 'date', $options);
+
+        // Course string to time date range filter.
+        $headinglabel = get_string('str_course_completion_date', 'rlreport_course_completion_by_cluster');
+        $options = array(
+            'help'       => array('str_course_completion_date', 'rlreport_course_completion_by_cluster'),
+            'dateformat' => get_string('date_format', 'rlreport_course_completion_by_cluster'),
+            'from_disable' => array('elem' => 'completiondaterange_sck', 'op' => 'checked', 'value' => '1'),
+            'to_disable' => array('elem' => 'completiondaterange_eck', 'op' => 'checked', 'value' => '1')
+        );
+        $strcompletiondatefilter = new generalized_filter_entry('strcompletiondaterange', 'enrol', 'completetime',
+                $headinglabel, false, 'strtotime_daterange', $options);
+
+        // CourseSet-Course dependent-select filter(s).
+        $crssetcoursefilter = new generalized_filter_entry('courses', 'course', 'id', get_string('filter_crssetcourses', 'rlreport_course_completion_by_cluster'),
+                false, 'crssetcourseselect', array(
+                    'default' => NULL,
+                    'report_path' => $CFG->wwwroot.'/local/elisreports/instances/course_completion_by_cluster/',
+                    'attrs' => array('multiple' => true),
+                    'help' => array('course_completion_by_cluster',
+                            get_string('courses', 'rlreport_course_completion_by_cluster'),
+                            'rlreport_course_completion_by_cluster')));
 
         //columns checkboxes
         $columns_heading = get_string('columns_options_heading', 'rlreport_course_completion_by_cluster');
@@ -224,8 +312,42 @@ class course_completion_by_cluster_report extends table_report {
         $clusterrole_filter = new generalized_filter_entry('clusterrole', '', '', $clusterrole_heading,
                                                            false, 'simpleselect', $clusterrole_options);
 
+        // Custom field filter.
+        $fieldoptions = array(
+            'block_instance' => $this->id,
+            'reportname' => $this->get_report_shortname(),
+            'ctxname' => 'user',
+            'help' => array('course_completion_by_cluster', get_string('filter_customfields', 'rlreport_course_completion_by_cluster'),
+                    'rlreport_course_completion_by_cluster')
+        );
+        $customfieldfilter = new generalized_filter_entry('field'.$this->id, 'field'.$this->id, 'id', get_string('filter_customfields',
+                'rlreport_course_completion_by_cluster'), false, 'custom_field_multiselect_values', $fieldoptions);
+
+        // Groupby option.
+        $usernamelabel = get_string('groupby_option_user_name', 'rlreport_course_completion_by_cluster');
+        $coursedescriptionlabel = get_string('groupby_option_course_description', 'rlreport_course_completion_by_cluster');
+        $classcompletiondatelabel = get_string('groupby_option_class_completion_date', 'rlreport_course_completion_by_cluster');
+        $usersetlabel = get_string('groupby_option_user_set', 'rlreport_course_completion_by_cluster');
+        $headinglabel = get_string('groupby_options_heading', 'rlreport_course_completion_by_cluster');
+
+        $options = array(
+            'choices' => array(
+                self::GROUPBYUSERSET => $usersetlabel,
+                self::GROUPBYUSERNAME => $usernamelabel,
+                self::GROUPBYCOURSE => $coursedescriptionlabel,
+                self::GROUPBYCOMPDATE => $classcompletiondatelabel
+            ),
+            'checked' => self::GROUPBYUSERSET,
+            'default' => self::GROUPBYUSERSET,
+            'heading' => $headinglabel,
+            'nofilter' => true,
+            'help' => array('groupby', get_string('filter_groupby', 'rlreport_course_completion_by_cluster'), 'rlreport_course_completion_by_cluster')
+        );
+        $groupbyfilter = new generalized_filter_entry('groupby', '', '', $headinglabel, false, 'radiobuttons', $options);
+
         //return all filters
-        return array($cluster_filter, $completion_filter, $columns_filter, $clusterrole_filter);
+        return array($cluster_filter, $completiondatefilter, $strcompletiondatefilter, $completion_filter, $crssetcoursefilter,
+                $columns_filter, $clusterrole_filter, $customfieldfilter, $groupbyfilter);
     }
 
     /**
@@ -260,21 +382,23 @@ class course_completion_by_cluster_report extends table_report {
         }
 
         //user idnumber
-        $idnumber_heading = get_string('column_idnumber', 'rlreport_course_completion_by_cluster');
-        $idnumber_column = new table_report_column('user.idnumber AS useridnumber', $idnumber_heading, 'idnumber');
+        $idnumberheading = get_string('column_idnumber', 'rlreport_course_completion_by_cluster');
+        $idnumbercolumn = new table_report_column('user.idnumber AS useridnumber', $idnumberheading, 'idnumber');
 
         //user fullname
-        $name_heading = get_string('column_user_name', 'rlreport_course_completion_by_cluster');
-        $name_column = new table_report_column('user.firstname', $name_heading, 'user_name', 'left', false, true, true,
+        $nameheading = get_string('column_user_name', 'rlreport_course_completion_by_cluster');
+        $namecolumn = new table_report_column('user.firstname', $nameheading, 'user_name', 'left', false, true, true,
                 array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_EXCEL, php_report::$EXPORT_FORMAT_HTML));
-        $lastname_heading = get_string('column_lastname', 'rlreport_course_completion_by_cluster');
-        $lastname_column = new table_report_column('user.lastname', $lastname_heading, 'user_name', 'left', false, true, true,
+        $lastnameheading = get_string('column_lastname', 'rlreport_course_completion_by_cluster');
+        $lastnamecolumn = new table_report_column('user.lastname AS userlastname', $lastnameheading, 'user_name', 'left', false, true, true,
                 array(php_report::$EXPORT_FORMAT_CSV));
-        $firstname_heading = get_string('column_firstname', 'rlreport_course_completion_by_cluster');
-        $firstname_column = new table_report_column('user.firstname AS userfirstname', $firstname_heading, 'user_name', 'left', false, true, true,
+        $firstnameheading = get_string('column_firstname', 'rlreport_course_completion_by_cluster');
+        $firstnamecolumn = new table_report_column('user.firstname AS userfirstname', $firstnameheading, 'user_name', 'left', false, true, true,
                 array(php_report::$EXPORT_FORMAT_CSV));
+        $usernamecolumn = new table_report_column('user.username AS musername', get_string('column_username', 'rlreport_course_completion_by_cluster'), 'moodleusername');
+        $usercolumns = array($idnumbercolumn, $namecolumn, $lastnamecolumn, $firstnamecolumn, $usernamecolumn);
 
-        $result = array($idnumber_column, $name_column, $lastname_column, $firstname_column);
+        $optionalcolumns = array();
 
         // determine whether to show the courseset column
         $preferences = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'columns_courseset', $this->filter);
@@ -287,38 +411,124 @@ class course_completion_by_cluster_report extends table_report {
         if ($showcourseset) {
             $coursesetheading = get_string('column_courseset', 'rlreport_course_completion_by_cluster');
             $coursesetcolumn = new table_report_column('ccs.name AS coursesetname', $coursesetheading, 'courseset');
-            $result = array_merge($result, array($coursesetcolumn));
+            $optionalcolumns[] = $coursesetcolumn;
         }
 
-        //CM course name
-        $course_heading = get_string('column_course', 'rlreport_course_completion_by_cluster');
-        $course_column = new table_report_column('course.name AS course_name', $course_heading, 'course');
+        // CM course name
+        $coursecolumnns = array();
+        $courseheading = get_string('column_course', 'rlreport_course_completion_by_cluster');
+        $coursecolumns[] = new table_report_column('course.name AS course_name', $courseheading, 'course');
+
+        // ELIS course idnumber column
+        $preferences = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'columns_courseidnumber', $this->filter);
+        if (isset($preferences['0']['value']) && $preferences['0']['value']) {
+            $coursecolumns[] = new table_report_column('course.idnumber AS course_idnumber', get_string('column_courseidnumber',
+                    'rlreport_course_completion_by_cluster'), 'courseidnumber');
+        }
 
         //whether the course is required in the curriculum
-        $required_heading = get_string('column_required', 'rlreport_course_completion_by_cluster');
-        $required_column = new table_report_column('curriculum_course.required', $required_heading, 'required');
+        $requiredheading = get_string('column_required', 'rlreport_course_completion_by_cluster');
+        $requiredcolumn = new table_report_column('curriculum_course.required', $requiredheading, 'required');
 
-        $class_heading = get_string('column_class', 'rlreport_course_completion_by_cluster');
-        $class_column = new table_report_column('class.idnumber AS classidnumber', $class_heading, 'class');
-
-        // array of all columns
-        $result = array_merge($result, array($course_column, $required_column, $class_column));
+        $classheading = get_string('column_class', 'rlreport_course_completion_by_cluster');
+        $classcolumn = new table_report_column('class.idnumber AS classidnumber', $classheading, 'class');
 
         //add the enrolment status column if applicable, based on the filter
         if ($show_status) {
-            $completed_heading = get_string('column_completed', 'rlreport_course_completion_by_cluster');
-            $result[] = new table_report_column('enrol.completestatusid', $completed_heading, 'completed');
+            $completedheading = get_string('column_completed', 'rlreport_course_completion_by_cluster');
+            $optionalcolumns[] = new table_report_column('enrol.completestatusid', $completedheading, 'completed');
         }
 
+        // Completion date.
+        $completeddateheading = get_string('column_completeddate', 'rlreport_course_completion_by_cluster');
+        $datecolumn = new table_report_column('enrol.completetime', $completeddateheading, 'completeddate');
+
         //always show the grade column
-        $grade_heading = get_string('column_grade', 'rlreport_course_completion_by_cluster');
-        $result[] = new table_report_column('enrol.grade', $grade_heading, 'grade');
+        $gradeheading = get_string('column_grade', 'rlreport_course_completion_by_cluster');
+        $optionalcolumns[] = new table_report_column('enrol.grade', $gradeheading, 'grade');
 
         //show number of completion elements completed if applicable, based on the filter
         if ($show_completion) {
-            $completionelements_heading = get_string('column_numcomplete', 'rlreport_course_completion_by_cluster');
-            $result[] = new table_report_column('COUNT(class_graded.id) AS numcomplete',
-                                                $completionelements_heading, 'numcomplete');
+            $completionelementsheading = get_string('column_numcomplete', 'rlreport_course_completion_by_cluster');
+            $optionalcolumns[] = new table_report_column('COUNT(class_graded.id) AS numcomplete', $completionelementsheading, 'numcomplete');
+        }
+
+        // Userset name.
+        $usersetheading = get_string('column_userset', 'rlreport_course_completion_by_cluster');
+        $usersetcolumn = new table_report_column('cluster.name', $usersetheading, 'userset');
+
+        $filterparams = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'field'.$this->get_report_shortname(),
+                $this->filter);
+
+        $filterparams = $filterparams[0]['value'];
+        $filterparams = $filterparams ? explode(',', $filterparams) : array();
+
+        // Loop through these additional parameters - new columns, will  have to eventually pass the table etc...
+        $customfieldcolumns = array();
+        if (isset($filterparams) && is_array($filterparams)) {
+            // Working with custom user fields - get all user fields
+            $fields = field::get_for_context_level(CONTEXT_ELIS_USER)->to_array();
+
+            foreach ($filterparams as $customuserid) {
+                $customuserfield = new field($customuserid);
+                // Obtain custom field default values IFF set
+                if (($defaultvalue = $customuserfield->get_default()) !== false) {
+                    // save in array { record_field => defaultvalue }
+                    $this->field_default['custom_data_'.$customuserid] = $defaultvalue;
+                }
+
+                // Find matching user field.
+                $userfieldtitle = $fields[$customuserid]->name;
+
+                // Now, create a join statement for each custom user field and add it to the sql query.
+                $datatable = $customuserfield->data_table();
+
+                // Field used to identify course id in custom field subquery.
+                $customuseridfield = "ctxt_instanceid_{$customuserid}";
+
+                // Make sure the user can view fields for the current user.
+                $viewfieldcapability = generalized_filter_custom_field_multiselect_values::field_capability($customuserfield->owners);
+                $viewfieldcontexts = get_contexts_by_capability_for_user('user', $viewfieldcapability, $this->userid);
+
+                $filterobj = $viewfieldcontexts->get_filter('ctxt.instanceid', 'user');
+                $filtersql = $filterobj->get_sql(false, 'ctxt', SQL_PARAMS_NAMED);
+                $viewfieldfilter = 'TRUE';
+                $params = array();
+                if (isset($filtersql['where'])) {
+                    $viewfieldfilter = $filtersql['where'];
+                    $params = $filtersql['where_parameters'];
+                }
+
+                // Create a custom join to be used later for the completed sql query.
+                $key = 'custom_'.$customuserid.'.custom_data_'.$customuserid;
+                $this->custom_joins[$key] = array("
+                         LEFT JOIN (SELECT d.data as custom_data_{$customuserid}, ctxt.instanceid as {$customuseridfield}
+                                      FROM {context} ctxt
+                                      JOIN {".$datatable."} d ON d.contextid = ctxt.id
+                                           AND d.fieldid = {$customuserid}
+                                     WHERE ctxt.contextlevel = ".CONTEXT_ELIS_USER."
+                                           AND {$viewfieldfilter}) custom_{$customuserid}
+                                ON user.id = custom_{$customuserid}.{$customuseridfield}",
+                         $params);
+                $customfieldcolumns[] = new table_report_column($key, $fields[$customuserid]->name, 'customuesrfield', 'left');
+            }
+        }
+
+        $groupbyfilter = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'groupby', $this->filter);
+        $groupbyid = isset($groupbyfilter[0]['value']) ? $groupbyfilter[0]['value'] : self::GROUPBYUSERSET;
+        if ($groupbyid == self::GROUPBYUSERNAME) {
+            // Group by user name.
+            $result = array_merge(array($idnumbercolumn, $lastnamecolumn, $firstnamecolumn, $usernamecolumn), $customfieldcolumns, $optionalcolumns,
+                    array($usersetcolumn), $coursecolumns, array($datecolumn));
+        } else if ($groupbyid == self::GROUPBYCOURSE) {
+            // Group by course description.
+            $result = array_merge($usercolumns, $customfieldcolumns, $optionalcolumns, array($usersetcolumn, $datecolumn));
+        } else if ($groupbyid == self::GROUPBYCOMPDATE) {
+            // Group by completion date.
+            $result = array_merge($usercolumns, $customfieldcolumns, $optionalcolumns, array($usersetcolumn), $coursecolumns, array($datecolumn));
+        } else {
+            // Default is group by userset.
+            $result = array_merge($usercolumns, $customfieldcolumns, $optionalcolumns, $coursecolumns, array($datecolumn));
         }
 
         return $result;
@@ -388,14 +598,50 @@ class course_completion_by_cluster_report extends table_report {
                                 AND class_graded.locked = 1
                                 AND class_graded.grade >= course_completion.completion_grade';
 
+        // Add any custom joins for custom fields at this point
+        $customfieldsql1 = '';
+        $customfieldsql2 = '';
+        $customfieldparams = array();
+        if (!empty($this->custom_joins)) {
+            foreach ($this->custom_joins as $customjoin) {
+                $customfieldsql1 .= $customjoin[0];
+                $customfieldparams[] = $customjoin[1];
+                $dupcustomjoin = $customjoin[0];
+                $dupparams = array();
+                foreach ($customjoin[1] as $key => $param) {
+                    $dupcustomjoin = str_replace(':'.$key, ':'.$key.'2', $dupcustomjoin);
+                    $dupparams[$key.'2'] = $param;
+                }
+                $customfieldsql2 .= $dupcustomjoin;
+                $customfieldparams[] = $dupparams;
+            }
+        }
+
         //filters for each of two cases, put inside the query for performance reasons
         //(use parent functionality because we are preventing filter application in the usual way)
         $curriculum_filter = parent::get_filter_condition('WHERE');
         $noncurriculum_filter = parent::get_filter_condition('AND');
 
-        //grouping for each of the two cases
-        $group_by = "GROUP BY user.id, enrol.id, cluster.id, course.id, curriculum.id";
-        $noncurriculum_group_by = "GROUP BY user.id, enrol.id, cluster.id, course.id";
+        // Grouping for each of the cases.
+        $groupbyfilter = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'groupby', $this->filter);
+        $groupbyid = isset($groupbyfilter[0]['value']) ? $groupbyfilter[0]['value'] : self::GROUPBYUSERSET;
+        if ($groupbyid == self::GROUPBYUSERNAME) {
+            // Group by user name first.
+            $groupby = "GROUP BY user.id, enrol.id, cluster.id, course.id, curriculum.id";
+            $noncurriculumgroupby = "GROUP BY user.id, enrol.id, cluster.id, course.id";
+        } else if ($groupbyid == self::GROUPBYCOURSE) {
+            // Group by course description first.
+            $groupby = "GROUP BY course.id, user.id, cluster.id";
+            $noncurriculumgroupby = "GROUP BY course.id, user.id, cluster.id";
+        } else if ($groupbyid == self::GROUPBYCOMPDATE) {
+            // Group by completion date first.
+            $groupby = "GROUP BY enrol.completetime, user.id, course.id, cluster.id";
+            $noncurriculumgroupby = "GROUP BY enrol.completetime, user.id, course.id, cluster.id";
+        } else {
+            // Default is group by userset first.
+            $groupby = "GROUP BY cluster.id, user.id, course.id, enrol.completetime";
+            $noncurriculumgroupby = "GROUP BY cluster.id, user.id, course.id, enrol.completetime";
+        }
 
         // status of clustertree filter, drop-down menu
         $usingdd = php_report_filtering_get_active_filter_values(
@@ -441,9 +687,10 @@ class course_completion_by_cluster_report extends table_report {
                         ON curriculum_assignment.userid = enrol.userid
                            AND course.id = class.courseid
                  {$completion_tables}
+                 {$customfieldsql1}
                  {$curriculum_filter[0]}
                  {$inactive}
-                 {$group_by}
+                 {$groupby}
 
                      UNION
 
@@ -463,14 +710,15 @@ class course_completion_by_cluster_report extends table_report {
                         ON course.id = crssetcrs.courseid
                            AND enrol.userid = curriculum_assignment2.userid
                  {$completion_tables}
+                 {$customfieldsql2}
                      WHERE curriculum_assignment.id IS NULL AND curriculum_assignment2.id IS NULL
                  {$noncurriculum_filter[0]}
                  {$inactive}
-                 {$noncurriculum_group_by}
+                 {$noncurriculumgroupby}
               ) main_data
               {$permissions_filter}";
 
-        $params = array_merge($params, $curriculum_filter[1], $noncurriculum_filter[1], $filter_params);
+        $params = array_merge($params, $customfieldparams, $curriculum_filter[1], $noncurriculum_filter[1], $filter_params);
         return array($sql, $params);
     }
 
@@ -520,13 +768,17 @@ class course_completion_by_cluster_report extends table_report {
                 $record->completestatusid = get_string('stustatus_notcomplete', 'rlreport_course_completion_by_cluster');
             } else if ($record->completestatusid == STUSTATUS_PASSED) {
                 //flag the class enrolment as passed and show completion date
-                $a = $this->format_date($record->enrolcompletetime);
-                $record->completestatusid = get_string('stustatus_passed', 'rlreport_course_completion_by_cluster', $a);
+                $record->completestatusid = get_string('stustatus_passed', 'rlreport_course_completion_by_cluster');
             } else {
                 //flag the class enrolment as failed and show completion date
-                $a = $this->format_date($record->enrolcompletetime);
-                $record->completestatusid = get_string('stustatus_failed', 'rlreport_course_completion_by_cluster', $a);
+                $record->completestatusid = get_string('stustatus_failed', 'rlreport_course_completion_by_cluster');
             }
+        }
+
+        if (!empty($record->completetime)) {
+            $record->completetime = $this->format_date($record->completetime);
+        } else {
+            $record->completetime = get_string('na', 'rlreport_course_completion_by_cluster');
         }
 
         //class grade
@@ -544,6 +796,13 @@ class course_completion_by_cluster_report extends table_report {
 
         if (isset($record->numcomplete)) {
             $record->numcomplete = get_string('numcomplete_tally', 'rlreport_course_completion_by_cluster', $record);
+        }
+
+        // Default values for custom fields IF not set.
+        foreach ($this->field_default as $key => $value) {
+            if (!isset($record->$key)) {
+                $record->$key = $this->format_default_data($value);
+            }
         }
 
         return $record;
@@ -571,30 +830,66 @@ class course_completion_by_cluster_report extends table_report {
      * @return  array List of objects containing grouping id, field names, display labels and sort order
      */
      function get_grouping_fields() {
-         global $DB;
-         //field that is used to compare one record from the next
-         $compare_field = $DB->sql_concat('user.lastname', "'_'", 'user.firstname', "'_'", 'user.id');
+        global $DB;
+        $customfieldgroupings = array();
+        if (!empty($this->custom_joins)) {
+            $customfieldgroupings = array_keys($this->custom_joins);
+        }
 
-         //field used to order for groupings
-         $order_field = $DB->sql_concat('lastname', "'_'", 'firstname', "'_'", 'userid');
+        $groupbyfilter = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'groupby', $this->filter);
+        $groupbyid = isset($groupbyfilter[0]['value']) ? $groupbyfilter[0]['value'] : self::GROUPBYUSERSET;
+        if ($groupbyid == self::GROUPBYUSERNAME) {
+            $usernamelabel = get_string('grouping_name', 'rlreport_course_completion_by_cluster');
+            $display = array($DB->sql_concat('user.lastname', "' '", 'user.firstname'));
+            $field = 'user.id'; // TBD: moodleuser.id?
+            // User name heading.
+            $usernamegrouping = new table_report_grouping('username', $field, $usernamelabel, 'ASC', $display, 'above', 'userlastname');
+            $comparefield = $DB->sql_concat('user.lastname', "'_'", 'user.firstname', "'_'", 'user.id');
+            $orderfield = $DB->sql_concat('userlastname', "'_'", 'userfirstname', "'_'", 'username');
+            $othergroupingfields = array('user.username AS musername', 'user.firstname', 'cluster.name');
+            if (!empty($customfieldgroupings)) {
+                $othergroupingfields = array_merge($othergroupingfields, $customfieldgroupings);
+            }
+            $othergrouping = new table_report_grouping('groupother', $comparefield, '', 'ASC', $othergroupingfields, 'below', $orderfield);
+            $result = array($usernamegrouping, $othergrouping);
+        } else if ($groupbyid == self::GROUPBYCOURSE) {
+            $courselabel = get_string('grouping_course', 'rlreport_course_completion_by_cluster');
+            $coursegrouping = new table_report_grouping('course', 'course.id', $courselabel, 'ASC', array('course.name'), 'above', 'courseid');
+            $comparefield = $DB->sql_concat('user.lastname', "'_'", 'user.firstname', "'_'", 'user.id');
+            $orderfield = $DB->sql_concat('userlastname', "'_'", 'userfirstname', "'_'", 'userid');
+            $othergroupingfields = array('user.username AS musername', 'user.firstname', 'cluster.name');
+            if (!empty($customfieldgroupings)) {
+                $othergroupingfields = array_merge($othergroupingfields, $customfieldgroupings);
+            }
+            $othergrouping = new table_report_grouping('groupother', $comparefield, '', 'ASC', $othergroupingfields, 'below', $orderfield);
+            $result = array($coursegrouping, $othergrouping);
+        } else if ($groupbyid == self::GROUPBYCOMPDATE) {
+            $compdatelabel = get_string('grouping_compdate', 'rlreport_course_completion_by_cluster');
+            $comparefield = "DATE_FORMAT(FROM_UNIXTIME(enrol.completetime), '%Y%m')";
+            $compdategrouping = new table_report_grouping('compdate', $comparefield, $compdatelabel, 'ASC', array('enrolcompletetime'), 'above', 'enrolcompletetime');
+            $comparefield = $DB->sql_concat('user.lastname', "'_'", 'user.firstname', "'_'", 'user.id');
+            $orderfield = $DB->sql_concat('userlastname', "'_'", 'userfirstname', "'_'", 'userid');
+            $othergroupingfields = array('user.username AS musername', 'user.firstname', 'cluster.name');
+            if (!empty($customfieldgroupings)) {
+                $othergroupingfields = array_merge($othergroupingfields, $customfieldgroupings);
+            }
+            $othergrouping = new table_report_grouping('groupother', $comparefield, '', 'ASC', $othergroupingfields, 'below', $orderfield);
+            $result = array($compdategrouping, $othergrouping);
+        } else {
+            $clusterlabel = get_string('grouping_cluster', 'rlreport_course_completion_by_cluster');
+            $clustergrouping = new table_report_grouping('cluster', 'cluster.id', $clusterlabel, 'ASC', array('cluster.name'), 'above', 'path');
+            $comparefield = $DB->sql_concat('user.lastname', "'_'", 'user.firstname', "'_'", 'user.id');
+            $orderfield = $DB->sql_concat('userlastname', "'_'", 'userfirstname', "'_'", 'userid');
+            $othergroupingfields = array('user.username AS musername', 'user.firstname');
+            if (!empty($customfieldgroupings)) {
+                $othergroupingfields = array_merge($othergroupingfields, $customfieldgroupings);
+            }
+            $othergrouping = new table_report_grouping('groupother', $comparefield, '', 'ASC', $othergroupingfields, 'below', $orderfield);
+            $result = array($clustergrouping, $othergrouping);
+        }
 
-         $cluster_label = get_string('grouping_cluster', 'rlreport_course_completion_by_cluster');
-         $cluster_grouping = new table_report_grouping('cluster', 'cluster.id', $cluster_label, 'ASC',
-                                                       array('cluster.name'), 'above', 'path');
-
-         $user_grouping_fields = array('user.idnumber AS useridnumber',
-                                       'user.firstname');
-         $user_grouping = new table_report_grouping('groupuseridnumber', $compare_field, '', 'ASC',
-                                                    $user_grouping_fields, 'below', $order_field);
-
-         //these groupings will always be used
-         $result = array($cluster_grouping, $user_grouping);
-
-         //determine whether or not we should use the curriculum grouping
-         $preferences = php_report_filtering_get_active_filter_values(
-                            $this->get_report_shortname(), 'columns_curriculum',
-                            $this->filter);
-
+         // Determine whether or not we should use the curriculum grouping.
+         $preferences = php_report_filtering_get_active_filter_values($this->get_report_shortname(), 'columns_curriculum', $this->filter);
          $show_curriculum = true;
          if (isset($preferences['0']['value'])) {
              $show_curriculum = $preferences['0']['value'];
@@ -629,15 +924,14 @@ class course_completion_by_cluster_report extends table_report {
     /**
      * Transforms a heading element displayed above the columns into a listing of such heading elements
      *
-     * @param   string array           $grouping_current  Mapping of field names to current values in the grouping
-     * @param   table_report_grouping  $grouping          Object containing all info about the current level of grouping
-     *                                                    being handled
-     * @param   stdClass               $datum             The most recent record encountered
-     * @param   string    $export_format  The format being used to render the report
+     * @param   string array $groupingcurrent Mapping of field names to current values in the grouping
+     * @param   table_report_grouping  $grouping Object containing all info about the current level of grouping being handled
+     * @param   stdClass $datum The most recent record encountered
+     * @param   string $exportformat The format being used to render the report
      * @uses    $DB
-     * @return  string array                              Set of text entries to display
+     * @return  string|array Set of text entries to display
      */
-     function transform_grouping_header_label($grouping_current, $grouping, $datum, $export_format) {
+     function transform_grouping_header_label($groupingcurrent, $grouping, $datum, $exportformat) {
          global $DB;
          if ($grouping->field == 'curriculum.id') {
              /**
@@ -646,32 +940,27 @@ class course_completion_by_cluster_report extends table_report {
               */
 
              //get the curriculum id from the current grouping info
-             $curriculumid = $grouping_current['curriculum.id'];
+             $curriculumid = $groupingcurrent['curriculum.id'];
 
              if (empty($curriculumid)) {
                  //default label
-                 return array($this->add_grouping_header($grouping->label,
-                                         get_string('non_curriculum_courses',
-                                            'rlreport_course_completion_by_cluster'),
-                                         $export_format));
+                 return array($this->add_grouping_header($grouping->label, get_string('non_curriculum_courses', 'rlreport_course_completion_by_cluster'),
+                         $exportformat));
              } else {
                  //actually have a curriculum, so display it
-                 $curriculum_name = $DB->get_field(curriculum::TABLE, 'name',
-                                        array('id' => $curriculumid));
+                 $curriculumname = $DB->get_field(curriculum::TABLE, 'name', array('id' => $curriculumid));
 
-                 $completed_description = '';
+                 $completeddescription = '';
                  if ($datum->completed) {
                      //flag the curriculum as complete and show the completion date
                      $a = $this->format_date($datum->curriculumcompletetime);
-                     $completed_description = get_string('completed_yes', 'rlreport_course_completion_by_cluster', $a);
+                     $completeddescription = get_string('completed_yes', 'rlreport_course_completion_by_cluster', $a);
                  } else {
                      //flag the curriculum as incomplete
-                     $completed_description = get_string('completed_no', 'rlreport_course_completion_by_cluster');
+                     $completeddescription = get_string('completed_no', 'rlreport_course_completion_by_cluster');
                  }
 
-                 return array($this->add_grouping_header($grouping->label,
-                                  $curriculum_name .' '. $completed_description,
-                                  $export_format));
+                 return array($this->add_grouping_header($grouping->label, $curriculumname.' '.$completeddescription, $exportformat));
              }
          } else if ($grouping->field == 'cluster.id') {
              /**
@@ -679,7 +968,7 @@ class course_completion_by_cluster_report extends table_report {
               */
 
              //get the current (new) cluster id
-             $clusterid = $grouping_current[$grouping->field];
+             $clusterid = $groupingcurrent[$grouping->field];
              $cluster = new userset($clusterid);
 
              $result = array();
@@ -689,9 +978,7 @@ class course_completion_by_cluster_report extends table_report {
 
              while ($cluster->id != 0) {
                  $current_cluster_hierarchy[] = $cluster->id;
-                 $result[] = $this->add_grouping_header($grouping->label,
-                                                        $cluster->name,
-                                                        $export_format);
+                 $result[] = $this->add_grouping_header($grouping->label, $cluster->name, $exportformat);
                  $cluster = new userset($cluster->parent);
              }
 
@@ -756,15 +1043,29 @@ class course_completion_by_cluster_report extends table_report {
 
                  //add a header entry
                  $cluster_leader_label = get_string('cluster_leaders', 'rlreport_course_completion_by_cluster').' ';
-                 $result[] = $this->add_grouping_header($cluster_leader_label, $display, $export_format);
+                 $result[] = $this->add_grouping_header($cluster_leader_label, $display, $exportformat);
              }
 
              //return the labels in top-down order
              return $result;
+        } else if ($grouping->field == 'user.id') { // TBD: moodleuser.id?
+            $userid = $groupingcurrent[$grouping->field];
+            $user = new user($userid);
+            $user->load();
+            return array($this->add_grouping_header($grouping->label, $user->moodle_fullname(), $exportformat));
+        } else if ($grouping->field == 'course.id') {
+            $courseid = $groupingcurrent[$grouping->field];
+            if ($courseid && ($course = new course($courseid))) {
+                $course->load();
+                return array($this->add_grouping_header($grouping->label, get_string('grouping_course_format',
+                        'rlreport_course_completion_by_cluster', $course->to_object()), $exportformat));
+            }
+        } else if ($grouping->field == "DATE_FORMAT(FROM_UNIXTIME(enrol.completetime), '%Y%m')") {
+            $compdate = ($datum->enrolcompletetime > 0) ? date(get_string('date_format_grouping', 'rlreport_course_completion_by_cluster'),
+                    $datum->enrolcompletetime) : get_string('stustatus_notcomplete', 'rlreport_course_completion_by_cluster');
+            return array($this->add_grouping_header($grouping->label, $compdate, $exportformat));
          } else {
-             return array($this->add_grouping_header($grouping->label,
-                                     $grouping_current[$grouping->field],
-                                     $export_format));
+             return array($this->add_grouping_header($grouping->label, $groupingcurrent[$grouping->field], $exportformat));
          }
      }
 
