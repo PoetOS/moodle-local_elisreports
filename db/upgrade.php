@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2013 Remote Learner.net Inc (http://www.remote-learner.net)
+ * Copyright (C) 2008-2015 Remote Learner.net Inc (http://www.remote-learner.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  *
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2013 Remote Learner.net Inc (http://www.remote-learner.net)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  (C) 2008-2015 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
@@ -35,13 +35,13 @@ function xmldb_local_elisreports_upgrade($oldversion = 0) {
     $dbman = $DB->get_manager();
     $result = true;
 
-    if ($result && $oldversion < 2015010401) {
+    if ($result && $oldversion < 2015010403) {
         $table = new xmldb_table('local_elisreports_links');
         if (!$dbman->table_exists($table)) {
             // ELIS-9040: create new report attachment links table
             $dbman->install_one_table_from_xmldb_file($CFG->dirroot.'/local/elisreports/db/install.xml', 'local_elisreports_links');
         }
-        upgrade_plugin_savepoint($result, '2015010401', 'local', 'elisreports');
+        upgrade_plugin_savepoint($result, '2015010403', 'local', 'elisreports');
     }
 
     return $result;

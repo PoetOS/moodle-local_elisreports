@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2013 Remote Learner.net Inc (http://www.remote-learner.net)
+ * Copyright (C) 2008-2015 Remote Learner.net Inc (http://www.remote-learner.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,8 @@
  *
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2013 Remote Learner.net Inc (http://www.remote-learner.net)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  (C) 2008-2015 Remote-Learner.net Inc (http://www.remote-learner.net)
  *
  */
 
@@ -32,10 +32,11 @@ defined('MOODLE_INTERNAL') || die();
 function xmldb_local_elisreports_install() {
     global $DB;
     $result = true;
-
+    $oldinstalled = false;
     $dbman = $DB->get_manager();
     $table = new xmldb_table('php_report_schedule'); // Old pre 2.6 table
     if ($dbman->table_exists($table)) {
+        $oldinstalled = true;
         $newtable = new xmldb_table('local_elisreports_schedule');
         $dbman->drop_table($newtable);
         $dbman->rename_table($table, 'local_elisreports_schedule');
@@ -78,6 +79,12 @@ function xmldb_local_elisreports_install() {
     // Remove the old block ...
     $DB->delete_records('block', array('name' => 'php_report'));
     unset_all_config_for_plugin('block_php_report');
+
+    if ($oldinstalled) {
+        require_once(dirname(__FILE__).'/upgrade.php');
+        set_config('version', 2015010400, 'local_elisreports');
+        xmldb_local_elisreports_upgrade(2015010400);
+    }
 
     return $result;
 }
