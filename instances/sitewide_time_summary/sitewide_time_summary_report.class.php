@@ -164,6 +164,11 @@ class sitewide_time_summary_report extends table_report {
             return false;
         }
 
+        $etlcrondisabled = get_config('eliscore_etl', 'etl_disabled');
+        if (!empty($etlcrondisabled)) {
+            return false;
+        }
+
         //everything needed is present
         return true;
     }

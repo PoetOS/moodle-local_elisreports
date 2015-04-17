@@ -755,14 +755,12 @@ class user_class_completion_report extends table_report {
     function get_access_sql() {
         //condition that specifies whether a user has accessed an associated Moodle course
         $access = 'EXISTS (SELECT *
-                             FROM {'. classmoodlecourse::TABLE .'} clsmdl
-                             JOIN {log} log
-                               ON clsmdl.moodlecourseid = log.course
-                             JOIN {user} mdlu
-                               ON log.userid = mdlu.id
-                            '. $this->get_class_join_sql('WHERE') .
-                            ' AND stu.classid = clsmdl.classid
-                              AND u.idnumber = mdlu.idnumber)';
+                             FROM {'.classmoodlecourse::TABLE.'} clsmdl
+                             JOIN {logstore_standard_log} log ON clsmdl.moodlecourseid = log.courseid
+                                  AND log.contextlevel = '.CONTEXT_COURSE.'
+                             JOIN {user} mdlu ON log.userid = mdlu.id '.$this->get_class_join_sql('WHERE').'
+                                  AND stu.classid = clsmdl.classid
+                                  AND u.idnumber = mdlu.idnumber)';
 
         $elements_passed = $this->get_elements_sql();
 

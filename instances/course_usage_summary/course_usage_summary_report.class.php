@@ -384,16 +384,16 @@ class course_usage_summary_report extends icon_config_report {
 
         //main query
         $sql = 'SELECT COUNT(DISTINCT log.id) AS numresources
-                  FROM {log} log
+                  FROM {logstore_standard_log} log
                   JOIN {user} mdl_usr
                     ON log.userid = mdl_usr.id
                   JOIN {'. user::TABLE .'} usr
                     ON mdl_usr.idnumber = usr.idnumber
                   JOIN {'. classmoodlecourse::TABLE .'} clsmdl
-                    ON log.course = clsmdl.moodlecourseid
+                    ON log.courseid = clsmdl.moodlecourseid
                   JOIN {'. student::TABLE .'} enrol
                     ON enrol.classid = clsmdl.classid
-                   AND enrol.userid = usr.id
+                       AND enrol.userid = usr.id
                ';
 
         //get permissions sql bit
@@ -405,28 +405,23 @@ class course_usage_summary_report extends icon_config_report {
 
         // Only add the where statement if filters were used
         if ($this->filter_statement || $this->need_permissions()) {
-            $sql .= 'WHERE EXISTS (
-                        SELECT *
-                        FROM {'. student::TABLE .'} enrol2
-                        JOIN {'. pmclass::TABLE .'} class
-                          ON class.id = enrol2.classid
-                        JOIN {'. curriculumcourse::TABLE .'} curcrs
-                          ON curcrs.courseid = class.courseid
-                        JOIN {'. curriculumstudent::TABLE ."} curass
-                          ON curcrs.curriculumid = curass.curriculumid
-                         AND curass.userid = enrol2.userid
-                        WHERE enrol2.id = enrol.id
-                         {$this->filter_statement}
-                         {$permissions_filter}
-                     )
-                     AND log.course != {$siteid}
-                     AND log.module {$in}
-                     AND log.action = 'view'
+            $sql .= 'WHERE EXISTS (SELECT * FROM {'.student::TABLE.'} enrol2
+                                     JOIN {'.pmclass::TABLE.'} class ON class.id = enrol2.classid
+                                     JOIN {'.curriculumcourse::TABLE.'} curcrs ON curcrs.courseid = class.courseid
+                                     JOIN {'.curriculumstudent::TABLE."} curass ON curcrs.curriculumid = curass.curriculumid
+                                          AND curass.userid = enrol2.userid
+                                    WHERE enrol2.id = enrol.id
+                                          {$this->filter_statement}
+                                          {$permissions_filter}
+                                  )
+                           AND log.courseid != {$siteid}
+                           AND log.contextinstanceid {$in}
+                           AND log.contextlevel = ".CONTEXT_MODULE."
                     ";
         } else {
-            $sql .= "WHERE log.course != {$siteid}
-                       AND log.module {$in}
-                       AND log.action = 'view'
+            $sql .= "WHERE log.courseid != {$siteid}
+                       AND log.contextinstanceid {$in}
+                       AND log.contextlevel = ".CONTEXT_MODULE."
                     ";
         }
 

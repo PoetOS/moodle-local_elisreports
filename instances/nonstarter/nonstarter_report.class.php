@@ -442,7 +442,7 @@ class nonstarter_report extends table_report {
 
         /** *****
             Optimization was too remove following etl code block
-            since it should be based on the mdl_log table data;
+            since it should be based on the Moodle log table data;
             but, results were different with multiple sets of data !?!?!?
         ** ******/
         // Exclude users with etl user activity for course
@@ -460,16 +460,15 @@ class nonstarter_report extends table_report {
 
         // Exclude users with log entries for Moodle course
         // TBD: or is this just for Moodle Only version of report?
-        $sql .= "
-           AND NOT EXISTS
-               (SELECT * FROM {log}
-                 WHERE u.id = userid AND module = 'course'
-                       AND course = clsm.moodlecourseid ";
+        $sql .= ' AND NOT EXISTS (SELECT * FROM {logstore_standard_log}
+                                   WHERE u.id = userid
+                                         AND contextlevel = '.CONTEXT_COURSE.'
+                                         AND courseid = clsm.moodlecourseid ';
         if (!empty($this->startdate)) {
-            $sql .= "AND time >= {$this->startdate} ";
+            $sql .= "AND timecreated >= {$this->startdate} ";
         }
         if (!empty($this->enddate)) {
-            $sql .= "AND time <= {$this->enddate} ";
+            $sql .= "AND timecreated <= {$this->enddate} ";
         }
         $sql .= ")
            ";

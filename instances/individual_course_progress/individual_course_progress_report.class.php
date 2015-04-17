@@ -556,11 +556,11 @@ class individual_course_progress_report extends table_report {
 
         // resources accessed
         $columns[] = new table_report_column(
-                             "(SELECT COUNT(*) FROM {log} log
-                                WHERE log.module {$in}
-                                  AND log.action = 'view'
-                                  AND log.userid = user.id
-                                  AND log.course = clsmdl.moodlecourseid
+                             '(SELECT COUNT(*) FROM {logstore_standard_log} log
+                                WHERE log.contextlevel = '.CONTEXT_MODULE."
+                                      AND log.userid = user.id
+                                      AND log.courseid = clsmdl.moodlecourseid
+                                      AND log.contextinstanceid {$in}
                               ) AS numresources",
                               get_string('column_resources_accessed', $this->lang_file),
                               'cssresources_accessed', 'center', true);
