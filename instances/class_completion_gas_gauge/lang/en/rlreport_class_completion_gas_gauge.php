@@ -10,13 +10,15 @@ $string['class_completion_gas_gauge_inactive_help'] = '<p align="center"><b>Clas
 
 <p>Select "Yes" if you want the report output to include inactive users.</p>';
 
-$string['class_description'] = '{$a} Class Complete Report for All Students';
+$string['class_description'] = '{$a->idnumber} Class Complete Report for All Students';
 $string['class_paging_label'] = 'Class';
 $string['class_progress'] = 'All students in this class: {$a}% of enrolled students have completed this class';
 
 $string['column_completestatus'] = 'Status';
+$string['column_completetime'] = 'Completed';
 $string['column_firstname'] = 'Firstname';
 $string['column_fullname'] = 'Student';
+$string['column_idnumber'] = 'Idnumber';
 $string['column_lastname'] = 'Lastname';
 $string['column_numcompleted'] = '# Complete';
 $string['column_percentcomplete'] = '% Complete';
@@ -24,6 +26,7 @@ $string['column_score'] = 'Score';
 
 $string['completed_tally'] = '{$a->numcompleted} / {$a->numcompletionelements}';
 
+$string['date_format'] = '%m/%d/%Y';
 $string['displayname'] = 'Class Completion Gas Gauge';
 
 $string['filter_class'] = 'Select the class to show';
@@ -37,6 +40,7 @@ $string['header_crs_value'] = '{$a->name} ({$a->idnumber})';
 
 $string['na'] = 'N/A';
 $string['no_enrolments'] = 'No enrolments for class';
+$string['not_completed'] = 'Not Completed';
 
 $string['percent_symbol'] = '%';
 $string['pluginname'] = 'Class Completion Gas Gauge Report';

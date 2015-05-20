@@ -199,41 +199,23 @@ class class_completion_gas_gauge_report extends gas_gauge_table_report {
         //query that calculates average final course grade
         $avg_score_sql = $this->get_report_sql('AVG(stu.grade)', true);
 
-        return array(new table_report_column('stu.completestatusid AS completestatus',
-                                             get_string('column_completestatus', $this->lang_file),
-                                             'completestatus'
-                                            ),
-                     new table_report_column('u.firstname',
-                             get_string('column_fullname', $this->lang_file),
-                             'fullname', 'left', false, true, true,
-                             array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_HTML, php_report::$EXPORT_FORMAT_EXCEL)),
-                     new table_report_column('u.lastname',
-                             get_string('column_lastname', $this->lang_file),
-                             'fullname', 'left', false, true, true,
-                             array(php_report::$EXPORT_FORMAT_CSV)),
-                     new table_report_column('u.firstname AS userfirstname',
-                             get_string('column_firstname', $this->lang_file),
-                             'fullname', 'left', false, true, true,
-                             array(php_report::$EXPORT_FORMAT_CSV)),
-                     new table_report_column('0 AS percentcomplete',
-                                             get_string('column_percentcomplete', $this->lang_file),
-                                             'percentcomplete', 'right', false, true, true,
-                                             NULL,
-                                             $percent_complete_sql
-                                            ),
-                     new table_report_column('COUNT(ccg.id) AS numcompleted',
-                                             get_string('column_numcompleted', $this->lang_file),
-                                             'numcompleted', 'left', false, true, true,
-                                             NULL,
-                                             $num_complete_sql
-                                            ),
-                     new table_report_column('gg.finalgrade AS score',
-                                             get_string('column_score', $this->lang_file),
-                                             'score', 'right', false, true, true,
-                                             NULL,
-                                             $avg_score_sql
-                                            )
-                    );
+        return array(
+                new table_report_column('stu.completestatusid AS completestatus', get_string('column_completestatus', $this->lang_file), 'completestatus'),
+                new table_report_column('stu.completetime AS completetime', get_string('column_completetime', $this->lang_file), 'completetime'),
+                new table_report_column('u.firstname', get_string('column_fullname', $this->lang_file), 'fullname', 'left', false, true, true,
+                        array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_HTML, php_report::$EXPORT_FORMAT_EXCEL)),
+                new table_report_column('u.lastname', get_string('column_lastname', $this->lang_file), 'fullname', 'left', false, true, true,
+                        array(php_report::$EXPORT_FORMAT_CSV)),
+                new table_report_column('u.firstname AS userfirstname', get_string('column_firstname', $this->lang_file), 'fullname', 'left', false, true, true,
+                        array(php_report::$EXPORT_FORMAT_CSV)),
+                new table_report_column('u.idnumber', get_string('column_idnumber', $this->lang_file), 'idnumber', 'left', false, true, true),
+                new table_report_column('0 AS percentcomplete', get_string('column_percentcomplete', $this->lang_file), 'percentcomplete', 'right', false, true,
+                        true, NULL, $percent_complete_sql),
+                new table_report_column('COUNT(ccg.id) AS numcompleted', get_string('column_numcompleted', $this->lang_file), 'numcompleted', 'left', false,
+                        true, true, NULL, $num_complete_sql),
+                new table_report_column('gg.finalgrade AS score', get_string('column_score', $this->lang_file), 'score', 'right', false, true, true, NULL,
+                        $avg_score_sql)
+        );
     }
 
     /**
@@ -363,6 +345,15 @@ class class_completion_gas_gauge_report extends gas_gauge_table_report {
         //clear out the class info if there is only one class enrolment for the user and course
         if (isset($record->numclasses) && $record->numclasses == 1) {
             $record->classidnumber = '';
+        }
+
+        // ELIS-9105: transform new completetime
+        if ($record->completestatus == STUSTATUS_NOTCOMPLETE) {
+            $record->completetime = get_string('not_completed', $this->lang_file);
+        } else if (empty($record->completetime)) {
+            $record->completetime = get_string('na', $this->lang_file);
+        } else {
+            $record->completetime = $this->userdate($record->completetime, get_string('date_format', $this->lang_file));
         }
 
         $status = student::$completestatusid_values[$record->completestatus];
@@ -551,13 +542,33 @@ class class_completion_gas_gauge_report extends gas_gauge_table_report {
      */
     function get_gas_gauge_header_info() {
         global $DB;
-        $class_name = '';
-        if ($class_record = $DB->get_record(pmclass::TABLE, array('id' => $this->gas_gauge_page_value))) {
-            $class_name = $class_record->idnumber;
+
+        $classdata = array(
+            'idnumber' => '?',
+            'courseid' => '?',
+            'startdate' => 0,
+            'enddate' => 0,
+            'duration' => '',
+            'starttimehour' => 0,
+            'starttimeminute' => 0,
+            'endtimehour' => 0,
+            'endtimeminute' => 0,
+            'maxstudents' => 0,
+            'environmentid' => '',
+            'enrol_from_waitlist' => false,
+            'coursename' => '?',
+            'courseidnumber' => '?',
+        );
+        if (($classobj = new pmclass($this->gas_gauge_page_value))) {
+            $classobj->load();
+            $classdata = $classobj->to_object();
+            $course = $classobj->course;
+            $classdata->coursename = $course->name;
+            $classdata->courseidnumber = $course->idnumber;
         }
 
-        //class description, including class name
-        $class_description = get_string('class_description', $this->lang_file, $class_name);
+        // Class description, including class object.
+        $classdescription = get_string('class_description', $this->lang_file, $classdata);
 
         if (empty($this->total_field)) {
             $class_progress = get_string('no_enrolments', $this->lang_file);
@@ -571,7 +582,7 @@ class class_completion_gas_gauge_report extends gas_gauge_table_report {
             $class_progress = get_string('class_progress', $this->lang_file, $display_value);
         }
 
-        return array($class_description, $class_progress);
+        return array($classdescription, $class_progress);
     }
 
     /**
