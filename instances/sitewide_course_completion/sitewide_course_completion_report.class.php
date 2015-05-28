@@ -148,15 +148,16 @@ class sitewide_course_completion_report extends table_report {
                                                                         $this->lang_file)
                                                        )
                                                  ),
-                     new generalized_filter_entry('sccdr', 'clsenr', 'completetime',
-                                                  get_string('filter_date_range', $this->lang_file),
-                                                  false, 'date',
-                                                  array('help' => array('sitewide_course_completion_date',
-                                                                        get_string('filter_date_range', $this->lang_file),
-                                                                        $this->lang_file)
-                                                       )
-                                                 )
-                    );
+                     new generalized_filter_entry('sccdr', 'clsenr', 'completetime', get_string('filter_date_range', $this->lang_file),
+                             false, 'date',
+                             array(
+                                 'never_included' => true,
+                                 'help' => array('sitewide_course_completion_date',
+                                         get_string('filter_date_range', $this->lang_file),
+                                         $this->lang_file)
+                                 )
+                             )
+                     );
     }
 
     /**
