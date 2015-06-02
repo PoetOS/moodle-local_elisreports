@@ -296,7 +296,7 @@ class individual_user_report extends table_report {
      *                  or '' if no grouping should be used
      */
     function get_report_sql_groups() {
-        return 'crscomp.id, crs.id';
+        return 'cur.id, crscomp.id, crs.id';
     }
 
     /**
