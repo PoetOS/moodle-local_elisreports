@@ -1082,26 +1082,26 @@ class course_completion_by_cluster_report extends table_report {
     function transform_grouping_header_record($element, $datum, $export_format) {
         global $CFG;
 
-        $induser_report_location = "{$CFG->wwwroot}/local/elisreports/render_report_page.php?report=individual_user&userid={$datum->userid}";
+        $induserreporturl = new moodle_url('/local/elisreports/render_report_page.php', array('report' => 'individual_user',
+            'filterautocomplete_id' => $datum->userid));
 
-        //make this a link if we're in HTML format
+        // Make grouping header useridnumber a link if we're in HTML format.
         if ($export_format == php_report::$EXPORT_FORMAT_HTML) {
-            $element->useridnumber = '<span class="external_report_link"><a href="'
-                                      . $induser_report_location .
-                                      '"" target="_blank">'.
-                                      $element->useridnumber .'</a></span>';
+            $element->useridnumber = html_writer::tag('span', html_writer::link($induserreporturl, $element->useridnumber,
+                    array('target' => '_blank')), array('class' => 'external_report_link'));
         }
 
         if ($export_format != php_report::$EXPORT_FORMAT_CSV) {
-            //use the user's full name
-            $element->firstname = php_report::fullname($datum);
+            // Use the user's full name.
+            $fullname = new stdClass;
+            $fullname->firstname = $datum->firstname;
+            $fullname->lastname = $datum->userlastname;
+            $element->firstname = php_report::fullname($fullname);
         }
-        //make this a link if we're in HTML format
+        // Make grouping header user [first]name a link if we're in HTML format.
         if ($export_format == php_report::$EXPORT_FORMAT_HTML) {
-            $element->firstname = '<span class="external_report_link"><a href="'
-                                  . $induser_report_location .
-                                  '"" target="_blank">'.
-                                  $element->firstname .'</a></span>';
+            $element->firstname = html_writer::tag('span', html_writer::link($induserreporturl, $element->firstname,
+                    array('target' => '_blank')), array('class' => 'external_report_link'));
         }
 
         return $element;
