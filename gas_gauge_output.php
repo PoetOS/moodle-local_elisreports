@@ -284,6 +284,9 @@ if ($persist == 0) {
     //render the chart to the screen
     $chart->Stroke();
 } else {
+    // The pChart class sets white as a color to indicate transparent, change the color to transparent black.
+    $transparent = imagecolorallocatealpha($chart->Picture, 0, 0, 0, 127);
+    imagecolortransparent($chart->Picture, $transparent);
     //store the chart in a PNG file
     imagepng($chart->Picture, $passthru_filename);
 }

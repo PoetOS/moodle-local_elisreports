@@ -61,7 +61,7 @@ class php_report_export_pdf extends php_report_export {
      */
     protected function initialize_pdf() {
         global $CFG;
-        require_once($CFG->dirroot. '/local/elisreports/lib/tcpdf/tcpdf.php');
+        require_once($CFG->dirroot.'/lib/tcpdf/tcpdf.php');
 
         $newpdf = new TCPDF('L', 'in', 'letter');
 
@@ -509,8 +509,8 @@ class php_report_export_pdf extends php_report_export {
             $format_attribute = '';
         }
 
-        //update the font format while keeping font family and size unchanged
-        $newpdf->SetFont($newpdf->getFontFamily(), $format_attribute, 0);
+        // Update the font format while keeping font family and size unchanged.
+        $newpdf->SetFont($newpdf->getFontFamily(), $format_attribute);
     }
 
     /**
@@ -521,7 +521,7 @@ class php_report_export_pdf extends php_report_export {
      * @param  string  $style   The appropriate style string
      */
     function set_font_style(&$newpdf, $style) {
-        $newpdf->SetFont($newpdf->getFontFamily(), $style, 0);
+        $newpdf->SetFont($newpdf->getFontFamily(), $style);
     }
 
     /**
