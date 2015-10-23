@@ -24,5 +24,6 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2015051100;
-$plugin->release = '2.9.2.1 (Build: 20151021)';
+$plugin->version = 2015102200;
+$plugin->release = '3.0.0.0 (Build: 20151022)';
+$plugin->component = 'rlreport_individual_user';

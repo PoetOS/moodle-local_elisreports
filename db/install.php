@@ -82,8 +82,8 @@ function xmldb_local_elisreports_install() {
 
     if ($oldinstalled) {
         require_once(dirname(__FILE__).'/upgrade.php');
-        set_config('version', 2015051100, 'local_elisreports');
-        xmldb_local_elisreports_upgrade(2015051100);
+        set_config('version', 2015102200, 'local_elisreports');
+        xmldb_local_elisreports_upgrade(2015102200);
     }
 
     return $result;
