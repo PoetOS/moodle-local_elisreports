@@ -72,7 +72,8 @@ function php_report_schedule_export_instance($report_schedule, $now = 0) {
     $messagehtml = $data['message'];
     $start = strlen($CFG->dataroot);
     $attachment = substr($filename,$start);
-    $attachname = $report_schedule->report.$now.'.'.$data['format'];
+    $ext = ($data['format'] == 'excel') ? 'xls' : $data['format'];
+    $attachname = $report_schedule->report.$now.'.'.$ext;
     if (isset($data['attachlimit']) && filesize($filename) > (int)($data['attachlimit'] * 1024 * 1024)) {
         $linkurl = save_report_attachment($report_schedule->id, $attachname, $filename);
         if (empty($linkurl)) {
