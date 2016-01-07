@@ -348,11 +348,10 @@ class class_roster_report extends table_report {
             }
 
             // Add instructor names
-            $instructor = new instructor(array('userid' => $USER->id, 'classid' => $classid));
-            $instructor_records = $instructor->get_instructors($classid);
-            if (!empty($instructor_records)) {
+            $instructorrecords = instructor::get_instructors($classid);
+            if (!empty($instructorrecords)) {
                 $instructors = '';
-                foreach ($instructor_records as $record) {
+                foreach ($instructorrecords as $record) {
                     $userpage = new userpage(array('id' => $record->id, 'action' => 'view'));
                     $instructors .= '<span class="external_report_link"><a href="'
                             .$userpage->url.'">'.php_report::fullname($record)
@@ -360,9 +359,8 @@ class class_roster_report extends table_report {
                 }
 
                 $header_obj = new stdClass;
-                $header_obj->label = get_string('header_instructors',$this->lang_file).':';
-                $header_obj->value = ($instructors == '') ? 'Not Available'
-                                                          : $instructors;
+                $header_obj->label = get_string('header_instructors', $this->lang_file).':';
+                $header_obj->value = empty($instructors) ? get_string('na', 'local_elisreports') : $instructors;
                 $header_obj->css_identifier = '';
                 $header_array[] = $header_obj;
             }

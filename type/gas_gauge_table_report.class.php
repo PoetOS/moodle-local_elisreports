@@ -586,7 +586,7 @@ abstract class gas_gauge_table_report extends table_report {
         $this->get_data();
 
         //header link for configuring default parameters
-        echo self::get_config_header();
+        echo $this->get_config_header();
     
         //header, including the gas-gauge paging and header text
         echo $this->print_gas_gauge_header($id);
