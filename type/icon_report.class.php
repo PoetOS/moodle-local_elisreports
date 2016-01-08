@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2016 Remote Learner.net Inc http://www.remote-learner.net
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @copyright  (C) 2008-2016 Remote Learner.net Inc http://www.remote-learner.net
  *
  */
 
@@ -266,7 +266,7 @@ class icon_report_entry {
      * @param  int      $num_decimals  Number of decimals to display
      * @param  boolean  $is_percent    True if value is a percentage, false otherwise
      */
-    function icon_report_entry($display, $value=0, $icon, $num_decimals = 0, $is_percent = false) {
+    public function __construct($display, $value=0, $icon, $num_decimals = 0, $is_percent = false) {
         $this->display = $display;
         $this->value = $value;
         $this->icon = $icon;

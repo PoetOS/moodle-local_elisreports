@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2016 Remote Learner.net Inc http://www.remote-learner.net
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @copyright  (C) 2008-2016 Remote Learner.net Inc http://www.remote-learner.net
  *
  */
 
@@ -100,7 +100,7 @@ abstract class table_report extends php_report {
      *
      * @retrn none
      */
-    function table_report($id, $userid = NULL, $execution_mode = php_report::EXECUTION_MODE_INTERACTIVE) {
+    public function __construct($id, $userid = NULL, $execution_mode = php_report::EXECUTION_MODE_INTERACTIVE) {
         //set up variables in parent class
         parent::__construct($id, $userid, $execution_mode);
 
@@ -2318,7 +2318,7 @@ class table_report_grouping {
      * @param  string  $position     The position of the grouping, above or below headers/data
      * @param  string  $sortfield    If not NULL, overrides the sorting specified by the "$field" parameter
      */
-    function table_report_grouping($id, $field, $label, $order, $col_element=array(), $position='above', $sortfield = NULL) {
+    public function __construct($id, $field, $label, $order, $col_element=array(), $position='above', $sortfield = NULL) {
         $this->id = $id;
         $this->field = $field;
         $this->label = $label;
@@ -2343,7 +2343,7 @@ class table_report_summary_row {
      * @param  string  $field              The field to pull the aggregation from
      * @param  string  $field_displayname  Display label
      */
-    function table_report_summary_row($field, $field_displayname) {
+    public function __construct($field, $field_displayname) {
         $this->field = $field;
         $this->field_displayname = $field_displayname;
     }
@@ -2360,7 +2360,7 @@ class table_report_column_based_summary_row {
      *
      * @param  array  $mapping  Associative array mapping columns to SQL statements
      */
-    function table_report_column_based_summary_row($mapping) {
+    public function __construct($mapping) {
         foreach ($mapping as $key => $value) {
             if (!empty($value)) {
                 $this->mapping[$key] = $value;
@@ -2424,7 +2424,8 @@ class table_report_column {
      * @param  string array  $columnexportformats  The formats in which this column should be displayed
     * @param   string        $aggregation_sql      SQL statement that returns a single measure representing a final sum for this column
      */
-    function table_report_column($id, $name, $css_identifier, $align = 'left', $sortable = false, $wrap = true, $header_wrap = true, $columnexportformats = NULL, $aggregation_sql = '') {
+    public function __construct($id, $name, $css_identifier, $align = 'left', $sortable = false, $wrap = true, $header_wrap = true,
+            $columnexportformats = NULL, $aggregation_sql = '') {
         $this->id = $id;
         $this->name = $name;
         $this->css_identifier = $css_identifier;
@@ -2476,8 +2477,8 @@ class table_report_horizontal_bar_column extends table_report_column {
      * @param  int      $width                 Width of the bar
      * @param  int      $height                Height of the bar
      */
-    function table_report_horizontal_bar_column($id, $name, $css_identifier, $total_column, $align = 'left', $display_string = '',
-                                                $display_percent_sign = true, $width = 100, $height = 20) {
+    public function __construct($id, $name, $css_identifier, $total_column, $align = 'left', $display_string = '',
+            $display_percent_sign = true, $width = 100, $height = 20) {
         parent::__construct($id, $name, $css_identifier, $align);
 
         $this->total_column = $total_column;

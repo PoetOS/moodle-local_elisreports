@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2016 Remote Learner.net Inc http://www.remote-learner.net
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @copyright  (C) 2008-2016 Remote Learner.net Inc http://www.remote-learner.net
  *
  */
 
@@ -90,7 +90,7 @@ abstract class gas_gauge_table_report extends table_report {
      *
      * @retrn none
      */
-    function gas_gauge_table_report($id, $userid = NULL, $execution_mode = php_report::EXECUTION_MODE_INTERACTIVE) {
+    public function __construct($id, $userid = NULL, $execution_mode = php_report::EXECUTION_MODE_INTERACTIVE) {
         parent::__construct($id, $userid, $execution_mode);
         $this->gas_gauge_page = optional_param('gas_gauge_page', 0, PARAM_INT);
     }

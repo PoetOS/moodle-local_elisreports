@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2016 Remote Learner.net Inc http://www.remote-learner.net
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @copyright  (C) 2008-2016 Remote Learner.net Inc http://www.remote-learner.net
  *
  */
 
@@ -36,9 +36,10 @@ class php_report_config_capable_filtering extends php_report_default_capable_fil
     var $reportname = '';
     var $secondary_filterings = array();
 
-    function php_report_config_capable_filtering($fields = null,
-                 $baseurl = null, $extraparams = null, $id = 0,
-                 $reportname = '', $secondary_filterings = array()) {
+    /**
+     * Constructor
+     */
+    public function __construct($fields = null, $baseurl = null, $extraparams = null, $id = 0, $reportname = '', $secondary_filterings = array()) {
 
         parent::__construct($fields, $baseurl, $extraparams, $id, $reportname, $secondary_filterings);
         $this->reportname = $reportname;

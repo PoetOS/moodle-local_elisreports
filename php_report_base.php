@@ -1,7 +1,7 @@
 <?php
 /**
  * ELIS(TM): Enterprise Learning Intelligence Suite
- * Copyright (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * Copyright (C) 2008-2016 Remote Learner.net Inc http://www.remote-learner.net
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  * @package    local_elisreports
  * @author     Remote-Learner.net Inc
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL
- * @copyright  (C) 2008-2012 Remote Learner.net Inc http://www.remote-learner.net
+ * @copyright  (C) 2008-2016 Remote Learner.net Inc http://www.remote-learner.net
  *
  */
 
@@ -74,7 +74,7 @@ abstract class php_report {
      *                                    for
      * @param  int       $execution_mode  The mode in which this report is being executed
      */
-    function php_report($id, $userid = NULL, $execution_mode = php_report::EXECUTION_MODE_INTERACTIVE) {
+    public function __construct($id, $userid = NULL, $execution_mode = php_report::EXECUTION_MODE_INTERACTIVE) {
         global $USER;
 
         $this->id = $id;
@@ -1174,7 +1174,7 @@ class php_report_header_entry {
      * @param  string  $value           Value to display
      * @param  string  $css_identifier  CSS class to use for this header entry
      */
-    function php_report_header_entry($label, $value, $css_identifier) {
+    public function __construct($label, $value, $css_identifier) {
         $this->label = $label;
         $this->value = $value;
         $this->css_identifier = $css_identifier;
