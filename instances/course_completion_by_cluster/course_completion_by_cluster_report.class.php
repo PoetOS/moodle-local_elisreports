@@ -542,7 +542,9 @@ class course_completion_by_cluster_report extends table_report {
      * @return  array   The report's main sql statement with optional params
      */
     function get_report_sql($columns) {
+        global $DB, $CFG;
         $param_prefix = 'ccbcr_';
+        require_once($CFG->dirroot.'/local/elisprogram/lib/data/userset.class.php');
 
         //special version of the select columns used in the non-curriculum case
         $noncurriculum_columns = str_replace(array('curriculum.id', 'ccs.name'), array('NULL', 'NULL'), $columns);
@@ -643,28 +645,28 @@ class course_completion_by_cluster_report extends table_report {
             $noncurriculumgroupby = "GROUP BY cluster.id, user.id, course.id, enrol.completetime";
         }
 
-        // status of clustertree filter, drop-down menu
-        $usingdd = php_report_filtering_get_active_filter_values(
-                       $this->get_report_shortname(), 'cluster_usingdropdown',
-                       $this->filter);
-
-        //check permissions
-        $permissions_filter = '';
-        $filter_params = array();
-        if ($usingdd === false || empty($usingdd[0]['value'])) {
-            //check permissions ONLY IF they selected dropdown: 'any value'
-            //TBD: IFF we can disable checkboxes for non-permitted tree clusters
-            //     THEN we can remove the second if condition above:
-            //     || empty($usingdd[0]['value'])
-
-            $contexts = get_contexts_by_capability_for_user('cluster', $this->access_capability, $this->userid);
-            //$permissions_filter = $contexts->sql_filter_for_context_level('clusterid', 'cluster');
-            $filter_obj = $contexts->get_filter('clusterid', 'cluster');
-            $filter_sql = $filter_obj->get_sql(false, null, SQL_PARAMS_NAMED);
-            if (isset($filter_sql['where'])) {
-                $permissions_filter = 'WHERE '. $filter_sql['where'];
-                $filter_params = $filter_sql['where_parameters'];
+        // Always check permissions.
+        $permissionsfilterinner1 = '';
+        $permissionsfilterinner2 = '';
+        $filterparams = [];
+        $filterparamsinner1 = [];
+        $filterparamsinner2 = [];
+        $contexts = get_contexts_by_capability_for_user('cluster', $this->access_capability, $this->userid);
+        $filter_obj = $contexts->get_filter('id', 'cluster');
+        $filter_sql = $filter_obj->get_sql(false, null, SQL_PARAMS_NAMED);
+        if (isset($filter_sql['where'])) {
+            $sqlcluster = 'SELECT id FROM {'.\userset::TABLE.'} WHERE '.$filter_sql['where'];
+            $results = $DB->get_records_sql($sqlcluster, $filter_sql['where_parameters']);
+            $ids = [];
+            foreach ($results as $id) {
+                $ids[] = $id->id;
             }
+            list($clusterseqs, $clusterparams) = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED, 'permissionsfilterinner1');
+            $permissionsfilterinner1 = 'AND clusterid '.$clusterseqs;
+            $filterparamsinner1 = $clusterparams;
+            list($clusterseqs, $clusterparams) = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED, 'permissionsfilterinner2');
+            $permissionsfilterinner2 = 'AND clusterid '.$clusterseqs;
+            $filterparamsinner2 = $clusterparams;
         }
 
         $lastname = 'user.lastname';
@@ -672,8 +674,7 @@ class course_completion_by_cluster_report extends table_report {
             $columns .= ", {$lastname}";
         }
         //the master query
-        $sql = "SELECT * FROM (
-                    SELECT DISTINCT {$columns}, {$extra_curriculum_columns}
+        $sql = "    SELECT DISTINCT {$columns}, {$extra_curriculum_columns}
                       FROM ".sprintf($core_tables_fmt, 1).'
                       JOIN {'.curriculumstudent::TABLE.'} curriculum_assignment ON user.id = curriculum_assignment.userid
                       JOIN {'.curriculum::TABLE.'} curriculum ON curriculum_assignment.curriculumid = curriculum.id
@@ -690,6 +691,7 @@ class course_completion_by_cluster_report extends table_report {
                  {$customfieldsql1}
                  {$curriculum_filter[0]}
                  {$inactive}
+                 {$permissionsfilterinner1}
                  {$groupby}
 
                      UNION
@@ -714,11 +716,10 @@ class course_completion_by_cluster_report extends table_report {
                      WHERE curriculum_assignment.id IS NULL AND curriculum_assignment2.id IS NULL
                  {$noncurriculum_filter[0]}
                  {$inactive}
-                 {$noncurriculumgroupby}
-              ) main_data
-              {$permissions_filter}";
+                 {$permissionsfilterinner2}
+                 {$noncurriculumgroupby}";
 
-        $params = array_merge($params, $customfieldparams, $curriculum_filter[1], $noncurriculum_filter[1], $filter_params);
+        $params = array_merge($params, $customfieldparams, $curriculum_filter[1], $noncurriculum_filter[1], $filterparamsinner1, $filterparamsinner2);
         return array($sql, $params);
     }
 
