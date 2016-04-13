@@ -66,6 +66,18 @@ class course_completion_by_cluster_report extends table_report {
     /** @var array field_default default values for custom fields. */
     protected $field_default = array();
 
+    /** @var array data types for custom fields. */
+    protected $_fielddatatypes = array();
+
+    /** @var array date & time data types for custom fields. */
+    protected $_datetimefields = array();
+
+    /** @var string custom field view permission on user context. */
+    protected $customfieldcapability = 'local/elisprogram:user_view'; // TBD: or 'local/elisreports:report_view' ?
+
+    /** @var array custom field context for user running report. */
+    protected $viewfieldcontexts = [];
+
     /**
      * Gets the report category.
      *
@@ -486,11 +498,13 @@ class course_completion_by_cluster_report extends table_report {
                 // Field used to identify course id in custom field subquery.
                 $customuseridfield = "ctxt_instanceid_{$customuserid}";
 
-                // Make sure the user can view fields for the current user.
-                $viewfieldcapability = generalized_filter_custom_field_multiselect_values::field_capability($customuserfield->owners);
-                $viewfieldcontexts = get_contexts_by_capability_for_user('user', $viewfieldcapability, $this->userid);
+                $key = 'custom_data_'.$customuserid;
 
-                $filterobj = $viewfieldcontexts->get_filter('ctxt.instanceid', 'user');
+                // Make sure the user can view fields for the current user.
+                $viewfieldcapability = generalized_filter_custom_field_multiselect_values::field_capability($customuserfield->owners, $this->customfieldcapability);
+                $this->viewfieldcontexts[$key] = get_contexts_by_capability_for_user('user', $viewfieldcapability, $this->userid);
+
+                $filterobj = $this->viewfieldcontexts[$key]->get_filter('instanceid', 'user');
                 $filtersql = $filterobj->get_sql(false, 'ctxt', SQL_PARAMS_NAMED);
                 $viewfieldfilter = 'TRUE';
                 $params = array();
@@ -499,8 +513,13 @@ class course_completion_by_cluster_report extends table_report {
                     $params = $filtersql['where_parameters'];
                 }
 
+                $this->_fielddatatypes[$key] = $customuserfield->datatype;
+                if (isset($customuserfield->owners['manual']) && ($manual = new field_owner($customuserfield->owners['manual'])) && $manual->param_control == 'datetime') {
+                    $this->_datetimefields[$key] = !empty($manual->param_inctime);
+                }
+                $key = 'custom_'.$customuserid.'.'.$key;
+
                 // Create a custom join to be used later for the completed sql query.
-                $key = 'custom_'.$customuserid.'.custom_data_'.$customuserid;
                 $this->custom_joins[$key] = array("
                          LEFT JOIN (SELECT d.data as custom_data_{$customuserid}, ctxt.instanceid as {$customuseridfield}
                                       FROM {context} ctxt
@@ -510,7 +529,7 @@ class course_completion_by_cluster_report extends table_report {
                                            AND {$viewfieldfilter}) custom_{$customuserid}
                                 ON user.id = custom_{$customuserid}.{$customuseridfield}",
                          $params);
-                $customfieldcolumns[] = new table_report_column($key, $fields[$customuserid]->name, 'customuesrfield', 'left');
+                $customfieldcolumns[] = new table_report_column($key, $fields[$customuserid]->name, 'customuesrfield'.$customuserid, 'left');
             }
         }
 
@@ -607,7 +626,7 @@ class course_completion_by_cluster_report extends table_report {
         if (!empty($this->custom_joins)) {
             foreach ($this->custom_joins as $customjoin) {
                 $customfieldsql1 .= $customjoin[0];
-                $customfieldparams[] = $customjoin[1];
+                $customfieldparams = array_merge($customfieldparams, $customjoin[1]);
                 $dupcustomjoin = $customjoin[0];
                 $dupparams = array();
                 foreach ($customjoin[1] as $key => $param) {
@@ -615,7 +634,7 @@ class course_completion_by_cluster_report extends table_report {
                     $dupparams[$key.'2'] = $param;
                 }
                 $customfieldsql2 .= $dupcustomjoin;
-                $customfieldparams[] = $dupparams;
+                $customfieldparams = array_merge($customfieldparams, $dupparams);
             }
         }
 
@@ -806,6 +825,19 @@ class course_completion_by_cluster_report extends table_report {
             }
         }
 
+        foreach ($this->_fielddatatypes as $fieldid => $datatype) {
+            $canviewuserfields = empty($this->viewfieldcontexts[$fieldid]) ? false : $this->viewfieldcontexts[$fieldid]->context_allowed($record->userid, 'user');
+            if (empty($canviewuserfields)) {
+                $record->$fieldid = get_string('na', 'rlreport_course_completion_by_cluster');
+            } else if ($datatype == 'bool') {
+                $record->$fieldid = !empty($record->$fieldid) ? get_string('yes') : get_string('no');
+            } else if (array_key_exists($fieldid, $this->_datetimefields)) {
+                $record->$fieldid = $this->userdate($record->$fieldid,
+                        get_string($this->_datetimefields[$fieldid] ? 'customfield_datetime_format' : 'customfield_date_format',
+                        'rlreport_course_completion_by_cluster'));
+            }
+        }
+
         return $record;
     }
 
@@ -842,7 +874,7 @@ class course_completion_by_cluster_report extends table_report {
         if ($groupbyid == self::GROUPBYUSERNAME) {
             $usernamelabel = get_string('grouping_name', 'rlreport_course_completion_by_cluster');
             $display = array($DB->sql_concat('user.lastname', "' '", 'user.firstname'));
-            $field = 'user.id'; // TBD: moodleuser.id?
+            $field = 'user.id';
             // User name heading.
             $usernamegrouping = new table_report_grouping('username', $field, $usernamelabel, 'ASC', $display, 'above', 'userlastname');
             $comparefield = $DB->sql_concat('user.lastname', "'_'", 'user.firstname', "'_'", 'user.id');
@@ -1049,7 +1081,7 @@ class course_completion_by_cluster_report extends table_report {
 
              //return the labels in top-down order
              return $result;
-        } else if ($grouping->field == 'user.id') { // TBD: moodleuser.id?
+        } else if ($grouping->field == 'user.id') {
             $userid = $groupingcurrent[$grouping->field];
             $user = new user($userid);
             $user->load();
