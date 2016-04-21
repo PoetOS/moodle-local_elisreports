@@ -353,9 +353,13 @@ class class_roster_report extends table_report {
                 $instructors = '';
                 foreach ($instructorrecords as $record) {
                     $userpage = new userpage(array('id' => $record->id, 'action' => 'view'));
-                    $instructors .= '<span class="external_report_link"><a href="'
-                            .$userpage->url.'">'.php_report::fullname($record)
-                            .'</a></span><br />';
+                    if ($export_format != php_report::$EXPORT_FORMAT_HTML) {
+                        $instructors .= php_report::fullname($record)."\n";
+                    } else {
+                        $instructors .= '<span class="external_report_link"><a href="'
+                                .$userpage->url.'">'.php_report::fullname($record)
+                                .'</a></span><br />';
+                    }
                 }
 
                 $header_obj = new stdClass;
