@@ -241,7 +241,7 @@ class scheduling_workflow extends workflow {
         $serialized_data = serialize($data);
 
         // Save to php_report_schedule - id (auto), userid (Moodle userid), report (shortname), config($data plus time() <= currenttime)
-        $schedule = new object();
+        $schedule = new stdClass;
         $schedule->userid   = $userid;
         $schedule->report   = $data['report'];
         $schedule->config   = $serialized_data;
