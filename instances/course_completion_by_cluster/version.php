@@ -24,13 +24,13 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2015102201;
-$plugin->release = '3.0.3.0 (Build: 20160509)';
+$plugin->version = 2016052300;
+$plugin->release = '3.1.0.0 (Build: 20160720)';
 $plugin->component = 'rlreport_course_completion_by_cluster';
 $plugin->dependencies = array(
-    'local_eliscore' => 2015102200
+    'local_eliscore' => 2016052300
 );
 
 if (file_exists(dirname(__FILE__).'/../../../elisprogram/lib/setup.php')) {
-    $plugin->dependencies['local_elisprogram'] = 2015102200;
+    $plugin->dependencies['local_elisprogram'] = 2016052300;
 }
