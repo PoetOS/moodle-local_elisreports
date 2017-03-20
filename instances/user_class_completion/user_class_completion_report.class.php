@@ -81,6 +81,9 @@ class user_class_completion_report extends table_report {
 
     protected $student_id_num = '';
 
+    /** @var $cachedgrpheader array of group header values */
+    protected $cachedgrpheader = [];
+
     //constant for the "not started" completion status
     const STUSTATUS_NOTSTARTED = 9999;
 
@@ -1615,11 +1618,9 @@ class user_class_completion_report extends table_report {
 
     function transform_grouping_header_label($grouping_current, $grouping, $datum, $export_format) {
         global $DB;
-        static $cnt = 0;
-        if ($cnt) {
-            return [];
+        if (!empty($this->cachedgrpheader)) {
+            return ($export_format != table_report::$EXPORT_FORMAT_CSV) ? [] : $this->cachedgrpheader;
         }
-        $cnt++;
         $params = array();
         $labels = array();
 
@@ -1905,7 +1906,7 @@ class user_class_completion_report extends table_report {
         //create the header item
         $text_label = get_string('grouping_credits', $this->languagefile);
         $labels[] = $this->add_grouping_header($text_label, $num_credits, $export_format);
-
+        $this->cachedgrpheader = [$num_users, $num_credits];
         return $labels;
     }
 
