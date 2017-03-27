@@ -28,6 +28,7 @@ global $CFG;
 require_once($CFG->dirroot.'/local/elisprogram/lib/setup.php');
 require_once(elispm::lib('data/user.class.php'));
 require_once(elispm::lib('data/userset.class.php'));
+require_once(elispm::file('tests/other/datagenerator.php'));
 require_once(elis::lib('data/customfield.class.php'));
 require_once(elis::lib('data/customfield.class.php'));
 require_once($CFG->dirroot.'/local/elisreports/php_report_base.php');
@@ -365,7 +366,10 @@ class multivalued_custom_field_testcase extends elis_database_test {
                             'customfield' => 1
                         ),
                         array( // currentrec
-                            'customfield' => 1
+                            'customfield' => 1,
+                            'startdate' => 0,
+                            'enddate' => 0,
+                            'numprogress' => 1
                         ),
                         array(),
                         array(),
@@ -377,7 +381,10 @@ class multivalued_custom_field_testcase extends elis_database_test {
                             'customfield' => 1
                         ),
                         array( // currentrec
-                            'customfield' => 2
+                            'customfield' => 2,
+                            'startdate' => 0,
+                            'enddate' => 0,
+                            'numprogress' => 1
                         ),
                         array( // rowdata
                             'customfield' => '1'
@@ -393,7 +400,10 @@ class multivalued_custom_field_testcase extends elis_database_test {
                             'customfield' => 1
                         ),
                         array( // currentrec
-                            'customfield' => 2
+                            'customfield' => 2,
+                            'startdate' => 0,
+                            'enddate' => 0,
+                            'numprogress' => 1
                         ),
                         array( // rowdata
                             'customfield' => '1'
@@ -409,7 +419,10 @@ class multivalued_custom_field_testcase extends elis_database_test {
                             'customfield' => 1
                         ),
                         array( // currentrec
-                            'customfield' => 2
+                            'customfield' => 2,
+                            'startdate' => 0,
+                            'enddate' => 0,
+                            'numprogress' => 1
                         ),
                         array( // rowdata
                             'customfield' => '1'
@@ -425,7 +438,9 @@ class multivalued_custom_field_testcase extends elis_database_test {
                             'customfield' => 1
                         ),
                         array( // currentrec
-                            'customfield' => 1
+                            'customfield' => 1,
+                            'userid' => 1,
+                            'numcredits' => 1,
                         ),
                         array( // rowdata
                             'customfield' => '1'
@@ -441,7 +456,9 @@ class multivalued_custom_field_testcase extends elis_database_test {
                             'customfield' => 1
                         ),
                         array( // currentrec
-                            'customfield' => 2
+                            'customfield' => 2,
+                            'userid' => 1,
+                            'numcredits' => 1,
                         ),
                         array( // rowdata
                             'customfield' => "1<br/>\n2"
@@ -457,7 +474,9 @@ class multivalued_custom_field_testcase extends elis_database_test {
                             'customfield' => 1
                         ),
                         array( // currentrec
-                            'customfield' => 2
+                            'customfield' => 2,
+                            'userid' => 1,
+                            'numcredits' => 1,
                         ),
                         array( // rowdata
                             'customfield' => "1\n2"
@@ -473,7 +492,13 @@ class multivalued_custom_field_testcase extends elis_database_test {
                             'customfield' => 1
                         ),
                         array( // currentrec
-                            'customfield' => 2
+                            'customfield' => 2,
+                            'courseid' => 1,
+                            'classid' => 1,
+                            'credits' => 1,
+                            'startdate' => 0,
+                            'completestatusid' => 0,
+                            'isinstructor' => 0,
                         ),
                         array( // rowdata
                             'customfield' => "1, 2"
@@ -489,7 +514,13 @@ class multivalued_custom_field_testcase extends elis_database_test {
                             'customfield' => 1
                         ),
                         array( // currentrec
-                            'customfield' => 3
+                            'customfield' => 3,
+                            'courseid' => 1,
+                            'classid' => 1,
+                            'credits' => 1,
+                            'startdate' => 0,
+                            'completestatusid' => 0,
+                            'isinstructor' => 0,
                         ),
                         array( // rowdata
                             'customfield' => "1<br/>\n2"
@@ -505,7 +536,13 @@ class multivalued_custom_field_testcase extends elis_database_test {
                             'customfield' => 1
                         ),
                         array( // currentrec
-                            'customfield' => 3
+                            'customfield' => 3,
+                            'courseid' => 1,
+                            'classid' => 1,
+                            'credits' => 1,
+                            'startdate' => 0,
+                            'completestatusid' => 0,
+                            'isinstructor' => 0,
                         ),
                         array( // rowdata
                             'customfield' => "1<br/>\n2<br/>\n3"
@@ -529,11 +566,17 @@ class multivalued_custom_field_testcase extends elis_database_test {
      * @uses $CFG
      */
     public function test_append_data($reportdir, $exportformat, $lastrec, $currentrec, $rowdata, $expectedrowdata) {
-        global $CFG;
+        global $CFG, $DB;
         $rclass = $reportdir.'_report';
+        require_once($CFG->dirroot."/local/elisprogram/userpage.class.php");
         require_once($CFG->dirroot."/local/elisreports/instances/{$reportdir}/{$rclass}.class.php");
         $report = new $rclass('test_'.$reportdir);
         $rowdata = (object)$rowdata;
+        if (isset($currentrec['userid'])) {
+            $datagen = new elis_program_datagenerator($DB);
+            $euser = $datagen->create_user();
+            $currentrec['userid'] = $euser->id;
+        }
         $report->append_data($rowdata, (object)$lastrec, (object)$currentrec, $exportformat);
         $this->assertEquals((object)$expectedrowdata, $rowdata);
     }

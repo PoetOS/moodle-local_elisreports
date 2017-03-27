@@ -680,12 +680,14 @@ class course_completion_by_cluster_report extends table_report {
             foreach ($results as $id) {
                 $ids[] = $id->id;
             }
-            list($clusterseqs, $clusterparams) = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED, 'permissionsfilterinner1');
-            $permissionsfilterinner1 = 'AND clusterid '.$clusterseqs;
-            $filterparamsinner1 = $clusterparams;
-            list($clusterseqs, $clusterparams) = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED, 'permissionsfilterinner2');
-            $permissionsfilterinner2 = 'AND clusterid '.$clusterseqs;
-            $filterparamsinner2 = $clusterparams;
+            if (!empty($ids)) {
+                list($clusterseqs, $clusterparams) = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED, 'permissionsfilterinner1');
+                $permissionsfilterinner1 = 'AND clusterid '.$clusterseqs;
+                $filterparamsinner1 = $clusterparams;
+                list($clusterseqs, $clusterparams) = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED, 'permissionsfilterinner2');
+                $permissionsfilterinner2 = 'AND clusterid '.$clusterseqs;
+                $filterparamsinner2 = $clusterparams;
+            }
         }
 
         $lastname = 'user.lastname';
