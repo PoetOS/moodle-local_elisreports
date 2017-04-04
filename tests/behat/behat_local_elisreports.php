@@ -1,6 +1,7 @@
 <?php
 
 require_once(__DIR__.'/../../../../lib/behat/behat_files.php');
+require_once(__DIR__.'/../../../../local/eliscore/lib/behat_traits.php');
 
 use Behat\Behat\Context\Step\Given as Given,
     Behat\Behat\Context\SnippetAcceptingContext,
@@ -11,41 +12,8 @@ use Behat\Behat\Context\Step\Given as Given,
     Behat\Mink\Exception\ElementNotFoundException as ElementNotFoundException;
 
 class behat_local_elisreports extends behat_files implements SnippetAcceptingContext {
+    use local_eliscore_behat_trait;
     public $detailsreports = [];
-
-    /**
-     * @Given /^the following ELIS users exist2:$/
-     */
-    public function theFollowingElisUsersExist2(TableNode $table) {
-        global $CFG;
-        require_once($CFG->dirroot.'/local/elisprogram/lib/data/user.class.php');
-        $data = $table->getHash();
-        foreach ($data as $datarow) {
-            $user = new user();
-            $user->idnumber = $datarow['idnumber'];
-            $user->username = $datarow['username'];
-            $user->email = $datarow['idnumber'].'@example.com';
-            $user->firstname = empty($datarow['firstname']) ? 'Student' : $datarow['firstname'];
-            $user->lastname = empty($datarow['lastname']) ? 'Test' : $datarow['lastname'];
-            $user->save();
-        }
-    }
-
-    /**
-     * @Given /^the following ELIS program course assignments exist:$/
-     */
-    public function theFollowingElisProgramCourseAssignmentsExist(TableNode $table) {
-        global $CFG, $DB;
-        require_once($CFG->dirroot.'/local/elisprogram/lib/data/curriculumcourse.class.php');
-        $data = $table->getHash();
-        foreach ($data as $datarow) {
-            $cc = new curriculumcourse();
-            $cc->courseid = $DB->get_field(course::TABLE, 'id', ['idnumber' => $datarow['course_idnumber']]);
-            $cc->curriculumid = $DB->get_field(curriculum::TABLE, 'id', ['idnumber' => $datarow['program_idnumber']]);
-            $cc->required = !empty($datarow['required']);
-            $cc->save();
-        }
-    }
 
     /**
      * @Given /^the following scheduled report jobs exist:$/
@@ -138,15 +106,6 @@ class behat_local_elisreports extends behat_files implements SnippetAcceptingCon
     }
 
     /**
-     * Save screenshot.
-     * @param string $fname the path and filename to sabe the screenshot to.
-     */
-    public function saveScreenshot($fname) {
-        $idata = $this->getSession()->getDriver()->getScreenshot();
-        file_put_contents($fname, $idata);
-    }
-
-    /**
      * Save unique details report screenshot.
      * @param string $fname the path and filename to sabe the screenshot to.
      * @param string $url  the report url.
@@ -216,7 +175,7 @@ class behat_local_elisreports extends behat_files implements SnippetAcceptingCon
                 // error_log("Current URL {$testurl} != expected URL {$url}\n");
                 continue;
             }
-            $this->saveScreenshot("{$fpath}/uccr_{$cnt}_p1.jpg");
+            $this->rlSaveScreenshot("{$fpath}/uccr_{$cnt}_p1.jpg");
             $detailreports = [];
             $pg = 1;
             do {
@@ -247,7 +206,7 @@ class behat_local_elisreports extends behat_files implements SnippetAcceptingCon
                         ;  // Page link gone, ok to continue.
                     }
                     // $this->getSession()->wait(self::TIMEOUT * 1000, self::PAGE_READY_JS); // TBD?
-                    $this->saveScreenshot("{$fpath}/uccr_{$cnt}_p{$pg}.jpg");
+                    $this->rlSaveScreenshot("{$fpath}/uccr_{$cnt}_p{$pg}.jpg");
                     if ($timeout <= 0) {
                         break;
                     }

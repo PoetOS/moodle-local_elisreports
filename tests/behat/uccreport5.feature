@@ -3,7 +3,7 @@ Feature: User Class Completion/Details reports compare generation base.
 
     Background:
         Given I log in as "admin"
-        And the following ELIS users exist2:
+        And the following ELIS users exist:
           | username | idnumber | firstname | lastname |
           | testelis9010a | testelis9010a | Test | Elis9010a |
           | testelis9010b | testelis9010b | Test | Elis9010b |
