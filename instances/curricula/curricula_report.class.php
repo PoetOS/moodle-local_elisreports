@@ -191,15 +191,15 @@ class curricula_report extends table_report {
                                              'idnumber',
                                              'left',
                                               false),
-                     new table_report_column("u.lastname AS lastname",
+                     new table_report_column("crlmu.lastname AS lastname",
                              get_string('column_name', 'rlreport_curricula'),
                              'student', 'left', false, true, true,
                              array(php_report::$EXPORT_FORMAT_PDF, php_report::$EXPORT_FORMAT_EXCEL, php_report::$EXPORT_FORMAT_HTML)),
-                     new table_report_column("u.lastname AS userlastname",
+                     new table_report_column("crlmu.lastname AS userlastname",
                              get_string('column_lastname', 'rlreport_curricula'),
                              'student_lastname', 'left', false, true, true,
                              array(php_report::$EXPORT_FORMAT_CSV)),
-                     new table_report_column("u.firstname AS firstname",
+                     new table_report_column("crlmu.firstname AS firstname",
                              get_string('column_firstname', 'rlreport_curricula'),
                              'student_firstname', 'left', false, true, true,
                              array(php_report::$EXPORT_FORMAT_CSV)),
@@ -213,7 +213,7 @@ class curricula_report extends table_report {
                                              'credits_required',
                                              'left',
                                               false),
-                     new table_report_column('SUM(cce.credits) AS numcredits',
+                     new table_report_column('"" AS numcredits',
                                               get_string('column_credits_completed', 'rlreport_curricula'),
                                              'credits_completed',
                                              'left',
@@ -246,7 +246,7 @@ class curricula_report extends table_report {
      */
     function get_static_sort_columns() {
         global $DB;
-        return $DB->sql_concat('u.lastname',"' '",'u.firstname', "' '", 'u.idnumber');
+        return $DB->sql_concat('crlmu.lastname', "' '", 'crlmu.firstname', "' '", 'crlmu.idnumber');
     }
 
     /**
@@ -278,10 +278,10 @@ class curricula_report extends table_report {
      function get_grouping_fields() {
          global $DB;
          return array(new table_report_grouping('user_id',
-                                                 $DB->sql_concat('u.lastname',"' '",'u.firstname', "' '", 'u.idnumber'),
+                                                 $DB->sql_concat('crlmu.lastname', "' '", 'crlmu.firstname', "' '", 'crlmu.idnumber'),
                                                  get_string('grouping_idnumber', 'rlreport_curricula').': ',
                                                 'ASC',
-                                                 array("crlmu.idnumber AS idnumber","u.lastname AS lastname"),
+                                                 ["crlmu.idnumber AS idnumber", "crlmu.lastname AS lastname"],
                                                 'below')
                      );
      }
@@ -308,6 +308,31 @@ class curricula_report extends table_report {
     }
 
     /**
+     * Get a WHERE clause containing filters to ensure report viewing security.
+     *
+     */
+    public function get_security_where_clause() {
+        // Obtain all user contexts where this user can view reports.
+        $contexts = get_contexts_by_capability_for_user('user', $this->access_capability, $this->userid);
+
+        // Make sure we only count courses within those contexts.
+        $filterobj = $contexts->get_filter('id', 'user');
+        $filtersql = $filterobj->get_sql(false, 'crlmu', SQL_PARAMS_NAMED);
+        $where = [];
+        $params = [];
+        if (isset($filtersql['where'])) {
+            $where[] = $filtersql['where'];
+            $params = $filtersql['where_parameters'];
+        }
+
+        if (empty(elis::$config->local_elisprogram->legacy_show_inactive_users)) {
+            $where[] = 'crlmu.inactive = 0';
+        }
+
+        return [$where, $params];
+    }
+
+    /**
      * Specifies an SQL statement that will retrieve users and curricula information
      * such as credits, completion and expiration information
      *
@@ -316,54 +341,32 @@ class curricula_report extends table_report {
      * @uses    $DB
      * @return  array   The report's main sql statement with optional params
      */
-    function get_report_sql($columns) {
+    public function get_report_sql($columns) {
         global $DB;
 
-        //obtain all user contexts where this user can view reports
-        $contexts = get_contexts_by_capability_for_user('user', $this->access_capability, $this->userid);
-
-        //make sure we only count courses within those contexts
-        //$permissions_filter = $contexts->sql_filter_for_context_level('crlmu.id', 'user');
-        $filter_obj = $contexts->get_filter('id', 'user');
-        $filter_sql = $filter_obj->get_sql(false, 'crlmu', SQL_PARAMS_NAMED);
-        $where = array();
-        $params = array();
-        if (isset($filter_sql['where'])) {
-            $where[] = $filter_sql['where'];
-            $params = $filter_sql['where_parameters'];
-        }
+        list($where, $params) = $this->get_security_where_clause();
 
         $firstname = 'u.firstname AS firstname';
         if (stripos($columns, $firstname) === FALSE) {
             $columns .= ", {$firstname}";
         }
-        $report_sql = "SELECT {$columns}, crlmu.id as userid, curass.completed AS completed,
-        ". $DB->sql_concat('crlmu.lastname',"' '","COALESCE(crlmu.mi, '')","' '",'crlmu.firstname') .' as sortname
-                FROM {'. curriculumstudent::TABLE .'} curass
-                       JOIN {'. user::TABLE .'} crlmu
-                         ON curass.userid = crlmu.id
-                       JOIN {'. curriculum::TABLE .'} cc
-                         ON curass.curriculumid = cc.id
-                  LEFT JOIN {'.programcrsset::TABLE.'} pcs ON pcs.prgid = cc.id
-                  LEFT JOIN {'.crssetcourse::TABLE.'} csc ON csc.crssetid = pcs.crssetid
-                  LEFT JOIN {'. curriculumcourse::TABLE .'} ccc
-                         ON ccc.curriculumid = cc.id
-                  LEFT JOIN {'. pmclass::TABLE .'} ccl
-                         ON (ccl.courseid = ccc.courseid OR ccl.courseid = csc.courseid)
-                  LEFT JOIN {'. student::TABLE .'} cce
-                         ON (cce.classid = ccl.id) AND (cce.userid = curass.userid)
-                       JOIN {user} u
-                         ON u.idnumber = crlmu.idnumber
-                      ';
+        $sortnamecolumn = $DB->sql_concat('crlmu.lastname', "' '", "COALESCE(crlmu.mi, '')", "' '", 'crlmu.firstname');
+        $reportsql = "SELECT {$columns},
+                             crlmu.id as userid,
+                             cc.id AS prgid,
+                             curass.completed AS completed,
+                             {$sortnamecolumn} as sortname
+                        FROM {".curriculumstudent::TABLE.'} curass
+                        JOIN {'.user::TABLE.'} crlmu
+                             ON curass.userid = crlmu.id
+                        JOIN {'.curriculum::TABLE.'} cc
+                             ON curass.curriculumid = cc.id ';
 
-        if (empty(elis::$config->local_elisprogram->legacy_show_inactive_users)) {
-            $where[] = 'crlmu.inactive = 0';
-        }
         if (!empty($where)) {
-            $report_sql .= 'WHERE '. implode(' AND ', $where);
+            $reportsql .= 'WHERE '. implode(' AND ', $where);
         }
 
-        return array($report_sql, $params);
+        return [$reportsql, $params];
     }
 
     /**
@@ -374,10 +377,26 @@ class curricula_report extends table_report {
      * @param   string    The report type
      * @return  stdClass  The reformatted record
      */
-    function transform_record($record, $export_format) {
-        global $CFG;
+    public function transform_record($record, $export_format) {
+        global $CFG, $DB;
 
         $new_record = clone($record);
+
+        $sql = 'SELECT SUM(cce.credits) as numcredits
+                  FROM {'.student::TABLE.'} cce
+                  JOIN {'.pmclass::TABLE.'} ccl ON (ccl.id = cce.classid)
+             LEFT JOIN {'.curriculumcourse::TABLE.'} ccc ON ccc.courseid = ccl.courseid
+             LEFT JOIN {'.crssetcourse::TABLE.'} csc ON csc.courseid = ccl.courseid
+             LEFT JOIN {'.programcrsset::TABLE.'} pcs ON pcs.crssetid = csc.crssetid
+                  JOIN {'.curriculum::TABLE.'} prg ON (prg.id = pcs.prgid OR prg.id = ccc.curriculumid)
+                 WHERE cce.userid = ? AND prg.id = ?';
+        $params = [$new_record->userid, $new_record->prgid];
+        $creditrecord = $DB->get_record_sql($sql, $params);
+        if (!empty($creditrecord) && $creditrecord->numcredits !== null) {
+            $new_record->numcredits = $creditrecord->numcredits;
+        } else {
+            $new_record->numcredits = get_string('na', 'rlreport_curricula');
+        }
 
         /**
          * Correct formatting for certain fields
@@ -389,10 +408,6 @@ class curricula_report extends table_report {
             $new_record->completiondate = get_string('not_completed', 'rlreport_curricula');
         } else {
             $new_record->completiondate = $this->userdate($new_record->completiondate, get_string('date_format', 'rlreport_curricula'));
-        }
-
-        if ($record->numcredits == NULL) {
-            $new_record->numcredits = get_string('na', 'rlreport_curricula');
         }
 
         if ($record->timeexpires == '0') {
@@ -431,17 +446,16 @@ class curricula_report extends table_report {
          **/
         require_once($CFG->dirroot .'/local/elisprogram/lib/data/student.class.php');
 
-        /**
-         * Set up link to individual user report
-         **/
-        $single_student_report_url = "{$CFG->wwwroot}/local/elisreports/render_report_page.php?report=individual_user&userid={$datum->userid}";
+        // Set up link to individual user report.
+        $urlparams = ['report' => 'individual_user', 'filterautocomplete_id' => $datum->userid];
+        $singlestudentreporturl = new \moodle_url('/local/elisreports/render_report_page.php', $urlparams);
 
         // Use the datum object to get first and last name for fullname
         $fullname = php_report::fullname($datum);
 
         if ($export_format == php_report::$EXPORT_FORMAT_HTML) {
             $element->lastname = "<span class=\"external_report_link\">
-                             <a href=\"{$single_student_report_url}\">{$fullname}</a>
+                             <a href=\"{$singlestudentreporturl}\">{$fullname}</a>
                              </span>";
         } else if ($export_format != php_report::$EXPORT_FORMAT_CSV) {
             $element->lastname = $fullname;
