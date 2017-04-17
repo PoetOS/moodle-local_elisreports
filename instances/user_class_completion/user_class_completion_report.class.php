@@ -1933,10 +1933,6 @@ class user_class_completion_report extends table_report {
         $dateformat = get_string('strftimedate');
         $filters    = php_report_filtering_get_active_filter_values($shortname, 'filter-title', $this->filter);
         $title      = $filters[0]['value'];
-
-        $header_obj = new stdClass;
-        $header_obj->label = '';
-        $header_obj->value = '';
         if (!empty($title)) {
 
             $site = get_site();
@@ -1967,11 +1963,17 @@ class user_class_completion_report extends table_report {
             $title = str_replace('%%site%%', $site_fullname, $title);
             $title = str_replace('%%startdate%%', $startdate, $title);
             $title = str_replace('%%enddate%%', $enddate, $title);
-            $header_obj->value = $title;
+            $headerobj = new stdClass;
+            $headerobj->value = $title;
+            if ($exportformat != php_report::$EXPORT_FORMAT_CSV) {
+                $headerobj->label = '';
+                $headerobj->value = nl2br($headerobj->value);
+            } else {
+                $headerobj->label = get_string('title', $this->languagefile);
+            }
+            $headerobj->css_identifier = 'custom_title';
+            $header_array[] = $headerobj;
         }
-        $header_obj->css_identifier = 'custom_title';
-        $header_obj->value = nl2br($header_obj->value);
-        $header_array[] = $header_obj;
 
         return $header_array;
     }
