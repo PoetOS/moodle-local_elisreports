@@ -382,18 +382,23 @@ class curricula_report extends table_report {
 
         $new_record = clone($record);
 
-        $sql = 'SELECT SUM(cce.credits) as numcredits
+        $sql = 'SELECT cce.classid, cce.credits as numcredits
                   FROM {'.student::TABLE.'} cce
                   JOIN {'.pmclass::TABLE.'} ccl ON (ccl.id = cce.classid)
              LEFT JOIN {'.curriculumcourse::TABLE.'} ccc ON ccc.courseid = ccl.courseid
              LEFT JOIN {'.crssetcourse::TABLE.'} csc ON csc.courseid = ccl.courseid
              LEFT JOIN {'.programcrsset::TABLE.'} pcs ON pcs.crssetid = csc.crssetid
                   JOIN {'.curriculum::TABLE.'} prg ON (prg.id = pcs.prgid OR prg.id = ccc.curriculumid)
-                 WHERE cce.userid = ? AND prg.id = ?';
+                 WHERE cce.userid = ? AND prg.id = ?
+              GROUP BY cce.classid';
         $params = [$new_record->userid, $new_record->prgid];
-        $creditrecord = $DB->get_record_sql($sql, $params);
-        if (!empty($creditrecord) && $creditrecord->numcredits !== null) {
-            $new_record->numcredits = $creditrecord->numcredits;
+        $creditrecords = $DB->get_recordset_sql($sql, $params);
+        if ($creditrecords->valid()) {
+            $new_record->numcredits = 0;
+            foreach ($creditrecords as $creditrecord) {
+                $new_record->numcredits += $creditrecord->numcredits;
+            }
+            $creditrecords->close();
         } else {
             $new_record->numcredits = get_string('na', 'rlreport_curricula');
         }
