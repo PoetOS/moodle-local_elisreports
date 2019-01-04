@@ -24,10 +24,10 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2016052300;
-$plugin->release = '3.1.5.1 (Build: 20170427)';
+$plugin->version = 2018110101;
+$plugin->release = '3.5.0 Beta (Build: 2019010400)';
 $plugin->component = 'local_elisreports';
-$plugin->maturity = MATURITY_STABLE;
+$plugin->maturity = MATURITY_BETA;
 $plugin->dependencies = array(
     'local_eliscore' => 2016052300
 );
