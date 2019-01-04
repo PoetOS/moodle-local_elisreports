@@ -32,7 +32,7 @@ require_once(dirname(__FILE__).'/../lib/filtering.php');
  * Class to test report sessions.
  * @group local_elisreports
  */
-class report_session_testcase extends PHPUnit_Framework_TestCase {
+class report_session_testcase extends PHPUnit\Framework\TestCase {
     /**
      * Verify that previous session data was successfully removed.
      * @uses $SESSION

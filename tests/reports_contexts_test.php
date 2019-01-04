@@ -34,7 +34,6 @@ require_once($CFG->dirroot.'/local/elisprogram/lib/setup.php');
 require_once(elispm::lib('data/user.class.php'));
 require_once(elispm::lib('data/userset.class.php'));
 require_once(elis::lib('data/customfield.class.php'));
-require_once('PHPUnit/Extensions/Database/DataSet/CsvDataSet.php');
 
 /**
  * Class to test PHP report contexts.

@@ -32,7 +32,6 @@ require_once(elispm::file('tests/other/datagenerator.php'));
 require_once(elis::lib('data/customfield.class.php'));
 require_once(elis::lib('data/customfield.class.php'));
 require_once($CFG->dirroot.'/local/elisreports/php_report_base.php');
-require_once('PHPUnit/Extensions/Database/DataSet/CsvDataSet.php');
 
 /**
  * Class to test PHP report multivalued custom fields.
