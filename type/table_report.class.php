@@ -561,7 +561,7 @@ abstract class table_report extends php_report {
                 } else {
                     $columndir  = $this->dir == "ASC" ? "DESC":"ASC";
                     $columnicon = $this->dir == "ASC" ? "t/down":"t/up";
-                    $columnicon = " <img src=\"".$OUTPUT->pix_url($columnicon)."'\" alt=\"\" />";
+                    $columnicon = " <img src=\"".$OUTPUT->image_url($columnicon)."'\" alt=\"\" />";
                 }
                 $args = '&amp;sort='. $column .'&amp;dir='. $columndir;
                 if (isset($this->page)) {

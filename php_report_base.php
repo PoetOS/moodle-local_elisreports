@@ -457,7 +457,7 @@ abstract class php_report {
             //start of anchor for link
             $result .= html_writer::start_tag('a', array('href' => $config_params_url));
             //icon
-            $result .= html_writer::empty_tag('img', array('src' => $OUTPUT->pix_url('configuration', 'local_elisreports'),
+            $result .= html_writer::empty_tag('img', array('src' => $OUTPUT->image_url('configuration', 'local_elisreports'),
                                                            'border' => 0,
                                                            'width' => 16,
                                                            'height' => 16,
@@ -489,7 +489,7 @@ abstract class php_report {
                 //start of anchor for link
                 $result .= html_writer::start_tag('a', array('href' => $export_url, 'target' => '_blank'));
                 //icon
-                $result .= html_writer::empty_tag('img', array('src' => $OUTPUT->pix_url($icon),
+                $result .= html_writer::empty_tag('img', array('src' => $OUTPUT->image_url($icon),
                                                                'border' => 0,
                                                                'width' => 16,
                                                                'height' => 16,
@@ -523,7 +523,7 @@ abstract class php_report {
             $result .= html_writer::start_tag('a', array('href' => '#',
                                                          'onclick' => $onclick));
             //icon
-            $result .= html_writer::empty_tag('img', array('src' => $OUTPUT->pix_url('schedule', 'local_elisreports')));
+            $result .= html_writer::empty_tag('img', array('src' => $OUTPUT->image_url('schedule', 'local_elisreports')));
             //end of anchor for link
             $result .= html_writer::end_tag('a');
             //end of span
