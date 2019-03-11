@@ -62,3 +62,4 @@ $string['remove_this'] = 'Remove this custom field.';
 
 $string['selectcustomfields'] = 'Select a customs field to add to your report';
 
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

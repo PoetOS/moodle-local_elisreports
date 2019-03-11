@@ -29,3 +29,4 @@ $string['role'] = 'User Role';
 $string['role_choose_footer'] = '<p>If no roles are selected above, then all roles are shown on the report.</p>';
 $string['role_choose_heading'] = 'Select the Roles to show on the report (optional):';
 
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

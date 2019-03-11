@@ -36,3 +36,4 @@ $string['pluginname'] = 'Course Completion Gas Gauge Report';
 $string['status_complete'] = 'complete';
 $string['status_incomplete'] = 'incomplete';
 
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

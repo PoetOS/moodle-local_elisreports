@@ -30,3 +30,5 @@ $string['na'] = 'N/A';
 $string['not_completed'] = 'Not Completed';
 
 $string['pluginname'] = 'Programs Report';
+
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

@@ -142,3 +142,19 @@ $string['popup_run_instructions'] = 'Please leave this window open while the sel
 $string['popup_running_label'] = 'Running job: ';
 $string['popup_status'] = '{$a->current} of {$a->total} jobs completed';
 
+// Privacy strings.
+$string['privacy:metadata:local_elisreports'] = 'ELIS reports local plugin data.';
+
+$string['privacy:metadata:local_elisreports_schedule'] = 'Description of the specific report schedule.';
+$string['privacy:metadata:local_elisreports_schedule:userid'] = 'The user id for this schedule.';
+$string['privacy:metadata:local_elisreports_schedule:report'] = 'The name of the report.';
+$string['privacy:metadata:local_elisreports_schedule:config'] = 'Serialized information for this schedule.';
+
+$string['privacy:metadata:local_elisreports_links'] = 'Specific scheduled report instance record.';
+$string['privacy:metadata:local_elisreports_links:scheduleid'] = 'Id of the schedule record for this link.';
+$string['privacy:metadata:local_elisreports_links:downloads'] = 'Count of the times this has been downloaded.';
+$string['privacy:metadata:local_elisreports_links:link'] = 'Link to the report attachment.';
+$string['privacy:metadata:local_elisreports_links:exportformat'] = 'Document format for the report.';
+$string['privacy:metadata:local_elisreports_links:timecreated'] = 'Timestamp the report was created.';
+
+$string['privacy:metadata:rlreportpluginsummary'] = 'RL reports subplugin data.';

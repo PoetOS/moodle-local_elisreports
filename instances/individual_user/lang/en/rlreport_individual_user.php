@@ -71,3 +71,5 @@ $string['transform_grade'] = 'Grade';
 $string['transform_incomplete'] = 'Incomplete';
 $string['transform_overdue'] = 'Overdue';
 $string['transform_status'] = 'Status';
+
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

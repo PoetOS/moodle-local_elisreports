@@ -26,3 +26,4 @@ $string['report_heading'] = 'Sitewide Transcript Report';
 $string['status_passed'] = 'Pass';
 $string['status_failed'] = 'Fail';
 
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

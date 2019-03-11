@@ -104,3 +104,5 @@ $string['selectcustomfields'] = 'Select a custom course field to add to your rep
 $string['totalscore_label'] = 'Show current total score';
 $string['transform_column_in_progress'] = 'In Progress';
 $string['yes'] = 'Yes';
+
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

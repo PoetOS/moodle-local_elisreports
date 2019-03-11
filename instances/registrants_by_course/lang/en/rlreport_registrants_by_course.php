@@ -34,3 +34,4 @@ $string['registrants_by_course_date_help'] = '<p align="center"><b>Registrants B
 
 <p>If you choose to select a date range here, the report output will only show courses with student class enrollments in the specified range.</p>';
 
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

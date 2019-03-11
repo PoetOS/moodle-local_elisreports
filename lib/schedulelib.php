@@ -827,8 +827,13 @@ class scheduling_page extends workflowpage {
         }
 
         //display the appropriate display strings
-        notify($report_text,       'php_report_bold_header',   'left');
-        notify($instructions_text, 'php_report_italic_header', 'left');
+        // RL2019 - These functions no longer work. Need to use $OUTPUT->notification. This means it may no longer display the way
+        // it is desired. If so, work will need to be done to make it look the way it is desired.
+        // notify($report_text,       'php_report_bold_header',   'left');
+        // notify($instructions_text, 'php_report_italic_header', 'left');
+        echo $OUTPUT->notification($report_text, 'php_report_bold_header');
+        echo $OUTPUT->notification($instructions_text, 'php_report_italic_header');
+
         echo $OUTPUT->spacer();
     }
 

@@ -60,3 +60,4 @@ $string['status_notstarted'] = 'Not Started';
 $string['status_passed'] = 'Passed';
 $string['student'] = 'Student';
 
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

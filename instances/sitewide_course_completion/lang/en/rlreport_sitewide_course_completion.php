@@ -49,3 +49,5 @@ $string['sitewide_course_completion_time_help'] = '<p align="center"><b>Sitewide
 
 <p>If you select "Yes" then the column indicating "time users spent in the course" will be shown in the report output.</p>';
 $string['yes'] = 'Yes';
+
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

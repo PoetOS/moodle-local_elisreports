@@ -49,3 +49,4 @@ $string['selectclass'] = 'Select a class';
 $string['status_complete'] = 'Complete';
 $string['status_incomplete'] = 'Incomplete';
 
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

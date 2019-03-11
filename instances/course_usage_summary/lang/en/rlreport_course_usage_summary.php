@@ -36,3 +36,4 @@ $string['pluginname'] = 'Site Usage Summary Report';
 $string['present'] = 'Present';
 $string['report_heading'] = 'Site Usage Summary Report: ';
 
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

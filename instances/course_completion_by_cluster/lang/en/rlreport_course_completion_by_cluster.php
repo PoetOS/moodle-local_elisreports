@@ -115,3 +115,4 @@ $string['tree_help'] = 'Select User Sets';
 
 $string['yes'] = 'Yes';
 
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

@@ -186,3 +186,4 @@ $string['user_class_completion_summarydatafields_help'] = '<p>This field represe
 $string['user_class_completion_username'] = 'Username';
 $string['user_class_completion_username_help'] = '<p>This field represents the username of users to be included in this report.</p>';
 
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

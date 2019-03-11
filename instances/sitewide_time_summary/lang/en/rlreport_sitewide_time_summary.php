@@ -65,3 +65,4 @@ $string['week2'] = 'week2';
 $string['week3'] = 'week3';
 $string['week4'] = 'week4';
 
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';

@@ -54,3 +54,4 @@ $string['pluginname'] = 'Class Roster Report';
 
 $string['selectclass'] = 'Select a class';
 
+$string['privacy:metadata'] = 'This subplugin stores no information. Code that uses this subplugin may store information.';
