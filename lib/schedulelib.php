@@ -1263,7 +1263,9 @@ if (window.opener.location != "") {
      * represent a page that is not the current page.
      */
     protected function _get_page_url() {
-        return '/local/elisreports/schedule.php';
+        global $CFG;
+
+        return $CFG->wwwroot . '/local/elisreports/schedule.php';
     }
 
     /**
